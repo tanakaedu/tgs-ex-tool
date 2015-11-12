@@ -24,6 +24,17 @@ namespace 試験登録
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            // 多重起動チェック
+            if (System.Diagnostics.Process.GetProcessesByName(
+                System.Diagnostics.Process.GetCurrentProcess().ProcessName).Length > 1)
+            {
+                // すでに起動
+                MessageBox.Show("起動済みです。");
+                Application.Exit();
+                return;
+            }
+
+
             string config = Path.GetDirectoryName(Application.ExecutablePath)+"\\config.dat";
             if (!File.Exists(config))
             {

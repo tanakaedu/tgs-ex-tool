@@ -12,4 +12,4 @@
 # 参考URL
 - [atmarkit クリップボードからデータを受け取るには？](http://www.atmarkit.co.jp/fdotnet/dotnettips/152getclipbrd/getclipbrd.html)
 - [dobon.net 画面をキャプチャする](http://dobon.net/vb/dotnet/graphics/screencapture.html)
-- 
+

@@ -6,11 +6,18 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using System.Net;
+using System.Net.Sockets;
 
 namespace TgsExServer
 {
     public partial class Form1 : Form
     {
+        IPAddress localAddress = IPAddress.Parse("127.0.0.1");
+        int localPort = 60000;
+        IPEndPoint localEP;
+        UdpClient udp;
+        
         /** テストデータ*/
         string [,] testData = new string[,]{
             {"21531000","123.123.123.123","0","x","path"},
@@ -71,6 +78,9 @@ namespace TgsExServer
         public Form1()
         {
             InitializeComponent();
+            // UDP起動
+            localEP = new IPEndPoint(localAddress, localPort);
+            udp = new UdpClient(localEP);
         }
 
         /** メンバーを更新する*/
@@ -154,6 +164,12 @@ namespace TgsExServer
         private void Form1_SizeChanged(object sender, EventArgs e)
         {
             tableLayoutPanel1.Width = ClientSize.Width;
+        }
+
+        /** 閉じる*/
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            udp.Close();
         }
     }
 }

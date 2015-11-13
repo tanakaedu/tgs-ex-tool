@@ -13,6 +13,11 @@ namespace TgsExServer
 {
     public partial class Form1 : Form
     {
+        // ポーリング間隔
+        const long PORING_MSEC = 3000;
+        // カウンタ
+        int iPoringCount = 0;
+
         // 送信回数
         int Ser = 0;
 
@@ -21,6 +26,9 @@ namespace TgsExServer
         int localPort = 60000;
         IPEndPoint localEP;
         UdpClient udp;
+
+        /** 終了*/
+        bool isClose = false;
         
         /** テストデータ*/
         string [,] testData = new string[,]{
@@ -79,17 +87,6 @@ namespace TgsExServer
             MAX
         };
 
-        public Form1()
-        {
-            InitializeComponent();            
-        }
-
-        /** メンバーを更新する*/
-        void updateMember()
-        {
-            // 既存のテキストボックスを
-        }
-
         // 各列の配置
         AnchorStyles[] anc = {
             AnchorStyles.Right,
@@ -99,6 +96,71 @@ namespace TgsExServer
             AnchorStyles.Left,
             AnchorStyles.Left
                         };
+
+        /** コンストラクタ*/
+        public Form1()
+        {
+            InitializeComponent();            
+        }
+
+        /** 起動時処理*/
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            // タイトルの作成
+            tableLayoutPanel1.RowCount = 1;
+            string[] LABEL = { "通し番号", "学籍番号", "IP", "コピペ", "切断", "パス" };
+            for (int i = 0; i < LABEL.Length; i++)
+            {
+                Label lbl = new Label();
+                lbl.AutoSize = true;
+                lbl.Text = LABEL[i];
+                labels.Add(lbl);
+                tableLayoutPanel1.Controls.Add(labels[labels.Count - 1], i, 0);
+                // パス以外
+                if (i < LABEL.Length - 1)
+                {
+                    //tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.Absolute, lbl.Width * 2f);
+                    tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.AutoSize);
+                }
+                else
+                {
+                    tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.AutoSize);
+                }
+            }
+
+            // テスト表示
+            printMember(testData);
+
+            // UDP起動
+            udp = new UdpClient(localPort);
+            udp.DontFragment = true;    // 断片化を防ぐ
+            udp.EnableBroadcast = true; // ブロードキャスト許可
+
+            // 受信を開始
+            udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
+
+            // ポーリングの開始
+            timer1.Enabled = true;
+        }
+
+        /** 受信コールバック*/
+        public void ReceiveCallback(IAsyncResult ar)
+        {
+            if (udp == null || isClose) return;
+            IPEndPoint remoteEP = null;
+            Byte[] dat = udp.EndReceive(ar, ref remoteEP);
+            string remoteIP = remoteEP.Address.ToString();
+            string recv = remoteIP+":"+System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
+
+            // 分析
+
+
+            // 仮出力
+            testData[0, 4] = recv;
+
+            // 非同期開始
+            udp.BeginReceive(ReceiveCallback, udp);
+        }
 
         /** メンバーを表示*/
         void printMember(string [,] mems)
@@ -140,62 +202,6 @@ namespace TgsExServer
             }
         }
 
-        /** 起動時処理*/
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            // タイトルの作成
-            tableLayoutPanel1.RowCount = 1;
-            string [] LABEL = {"通し番号", "学籍番号", "IP", "コピペ", "切断", "パス"};
-            for (int i=0 ; i<LABEL.Length ; i++) {
-                Label lbl = new Label();
-                lbl.AutoSize = true;
-                lbl.Text = LABEL[i];
-                labels.Add(lbl);
-                tableLayoutPanel1.Controls.Add(labels[labels.Count-1], i,0);
-                // パス以外
-                if (i < LABEL.Length - 1)
-                {
-                    //tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.Absolute, lbl.Width * 2f);
-                    tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.AutoSize);
-                }
-                else
-                {
-                    tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.AutoSize);
-                }
-            }
-
-            // テスト表示
-            printMember(testData);
-
-            // UDP起動
-            localEP = new IPEndPoint(localAddress, localPort);
-            udp = new UdpClient(localEP);
-            
-            // 受信を開始
-            udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
-
-            // ポーリングの開始
-            timer1.Enabled = true;
-        }
-
-        /** 受信コールバック*/
-        public void ReceiveCallback(IAsyncResult ar)
-        {
-            if (udp == null) return;
-            IPEndPoint ipAny = new IPEndPoint(IPAddress.Any, localPort);
-            Byte[] dat = udp.EndReceive(ar, ref ipAny);
-            string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
-
-            // 解体
-
-            // 設定
-            testData[0,5] = recv;
-            printRow(0, testData);
-
-            // 非同期開始
-            udp.BeginReceive(ReceiveCallback, udp);
-        }
-
         /** サイズ変更*/
         private void Form1_SizeChanged(object sender, EventArgs e)
         {
@@ -207,6 +213,7 @@ namespace TgsExServer
         {
             timer1.Enabled = false;
 
+            isClose = true;
             udp.Close();
             udp = null;
         }
@@ -214,6 +221,18 @@ namespace TgsExServer
         /** ポーリング*/
         private void timer1_Tick(object sender, EventArgs e)
         {
+            // データ更新
+            printRow(0, testData);
+
+            // ポーリングするか
+            iPoringCount++;
+            if (iPoringCount * timer1.Interval < PORING_MSEC)
+            {
+                return;
+            }
+
+            // ポーリング開始
+            iPoringCount = 0;
             Ser++;
             Text = "試験サーバー(" + Ser + ")";
             Application.DoEvents();
@@ -221,8 +240,7 @@ namespace TgsExServer
             // ブロードキャストで送信
             Byte[] dat =
                 System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call" + Ser);
-            udp.Send(dat, dat.GetLength(0));
+            udp.Send(dat, dat.Length, "255.255.255.255", localPort);
         }
-
     }
 }

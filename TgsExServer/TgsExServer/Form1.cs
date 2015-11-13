@@ -13,6 +13,9 @@ namespace TgsExServer
 {
     public partial class Form1 : Form
     {
+        // デバッグデータの利用
+        const bool USE_DEBUG = true;
+
         // ポーリング間隔
         const long PORING_MSEC = 3000;
         // カウンタ
@@ -29,48 +32,11 @@ namespace TgsExServer
         bool isClose = false;
         
         /** テストデータ*/
-        string [,] testData = new string[,]{
-            {"21531000","123.123.123.123","0","o","path"},
-            {"21531999","124.124.124.124","1","o","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
-            {"21531999","124.124.124.124","1","x","path2"},
+        string [][] testData ={
+            new string[] {"21531000","123.123.123.123","0","o","path"},
+            new string[] {"21531999","124.124.124.124","1","o","path2"}
         };
+
         /** ラベルリスト*/
         List<Label[]> labels = new List<Label[]>();
         /** 更新行フラグ*/
@@ -101,9 +67,39 @@ namespace TgsExServer
         /** コンストラクタ*/
         public Form1()
         {
-            InitializeComponent();            
+            InitializeComponent();
         }
 
+        /** 指定の文字列配列の行を新しく作成して、テーブルの最後に追加する
+         */
+        void addMember(string[] indata)
+        {
+            int row = labels.Count;
+            // ラベルを作成して記録しておく
+            string[] datas = {
+                                 ""+row,
+                                 indata[0],
+                                 indata[1],
+                                 indata[2],
+                                 indata[3],
+                                 indata[4]
+                             };
+
+            labels.Add(createLabels(datas));
+            // 更新フラグを追加
+            updates.Add(true);
+            // テーブルに追加
+            for (int i = 0; i < (int)COL.MAX; i++)
+            {
+                int w = tableLayoutPanel1.Controls.Count;
+                tableLayoutPanel1.Controls.Add(labels[row][i], i, row);
+                tableLayoutPanel1.Controls[row*(int)COL.MAX+i].Anchor = anc[i];
+            }
+        }
+
+        /**
+         * 指定の文字列から、ラベルの配列を作成した返す
+         */
         Label[] createLabels(string[] datas)
         {
             Label[] ret = new Label[datas.Length];
@@ -132,7 +128,17 @@ namespace TgsExServer
                 tableLayoutPanel1.ColumnStyles[i] = new ColumnStyle(SizeType.AutoSize);
             }
 
-            // テスト表示
+            // テストデータを利用する
+            if (USE_DEBUG)
+            {
+                // テストデータを登録する
+                for (int i = 0; i < testData.GetLength(0); i++)
+                {
+                    addMember(testData[i]);
+                }
+            }
+
+            // 表示
             printMember(testData);
 
             // UDP起動
@@ -193,46 +199,35 @@ namespace TgsExServer
 
 
             // 仮出力
-            testData[0, 4] = recv;
+            testData[0][4] = recv;
 
             // 非同期開始
             udp.BeginReceive(ReceiveCallback, udp);
         }
 
         /** メンバーを表示*/
-        void printMember(string [,] mems)
+        void printMember(string [][] mems)
         {
             tableLayoutPanel1.Visible = false;
             for (int i = 0 ; i < mems.GetLength(0); i++)
             {
-                // ラベルが不足していたら作成
-                if (labels.Count < i+2)
+                if (updates[i])
                 {
-                    labels.Add(createLabels(new string[]{"","","","","",""}));
-                    for (int j = 0; j < (int)COL.MAX; j++)
-                    {
-                        tableLayoutPanel1.Controls.Add(labels[i+1][j], j, i+1);
-                        tableLayoutPanel1.Controls[labels.Count-1].Anchor = anc[j];
-                    }
+                    updates[i] = false;
+                    // 行を出力
+                    printRow(i, mems);
                 }
-
-                // 行を出力
-                printRow(i, mems);
             }
             tableLayoutPanel1.Visible = true;
-
         }
 
         /** 行を表示*/
-        void printRow(int row, string[,] mems)
+        void printRow(int row, string[][] mems)
         {
-            // インデックス
-            labels[row+1][0].Text = (row + 1).ToString();
-
             // データ
-            for (int i = 0; i <mems.GetLength(1); i++)
+            for (int i = 0; i <mems[0].Length; i++)
             {
-                labels[row + 1][i+1].Text = mems[row, i];
+                labels[row + 1][i+1].Text = mems[row][i];
             }
         }
 

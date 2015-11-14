@@ -51,6 +51,9 @@ namespace 試験登録
             string path = getSavePath();
             if (path.Length == 0) return;
 
+            // カウンター
+            iCopyPasteCount++;
+
             // フォルダー作成
             Directory.CreateDirectory(path);
 

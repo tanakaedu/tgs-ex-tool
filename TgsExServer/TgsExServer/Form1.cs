@@ -15,10 +15,10 @@ namespace TgsExServer
     public partial class Form1 : Form
     {
         // デバッグデータの利用
-        const bool USE_DEBUG = true;
+        const bool USE_DEBUG = false;
 
         // ポーリング間隔
-        const long PORING_MSEC = 3000;
+        const long PORING_MSEC = 30000;
         // カウンタ
         int iPoringCount = 0;
 
@@ -281,6 +281,14 @@ namespace TgsExServer
                 return;
             }
 
+            sendCall();
+        }
+
+        /**
+         * クライアント呼び出しを送信する
+         */
+        void sendCall()
+        {
             // ポーリング開始
             iPoringCount = 0;
             Ser++;
@@ -289,7 +297,7 @@ namespace TgsExServer
 
             // ブロードキャストで送信
             Byte[] dat =
-                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser+","+textBox1.Text);
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser + "," + textBox1.Text);
             udp.Send(dat, dat.Length, "255.255.255.255", CLIENT_PORT);
         }
 
@@ -371,22 +379,28 @@ namespace TgsExServer
         /** 開始*/
         private void button1_Click(object sender, EventArgs e)
         {
-            // UDP起動
-            udp = new UdpClient(SERVER_PORT);
-            udp.DontFragment = true;    // 断片化を防ぐ
-            udp.EnableBroadcast = true; // ブロードキャスト許可
+            if (button1.Text == "開始")
+            {
+                // UDP起動
+                udp = new UdpClient(SERVER_PORT);
+                udp.DontFragment = true;    // 断片化を防ぐ
+                udp.EnableBroadcast = true; // ブロードキャスト許可
 
-            // 受信を開始
-            udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
+                // 受信を開始
+                udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
 
-            // ポーリングの開始
-            timer1.Enabled = true;
+                // メッセージ用フォーム表示
+                messageForm.Show();
 
-            // メッセージ用フォーム表示
-            messageForm.Show();
+                // ボタン変更
+                button1.Text = "再送";
 
-            // ボタン無効
-            button1.Enabled = false;
+                // ポーリングの開始
+                timer1.Enabled = true;
+            }
+
+            // 送信実行
+            sendCall();
         }
     }
 }

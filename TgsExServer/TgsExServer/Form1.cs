@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using System.Net;
 using System.Net.Sockets;
+using System.IO;
 
 namespace TgsExServer
 {
@@ -15,6 +16,8 @@ namespace TgsExServer
     {
         // デバッグデータの利用
         const bool USE_DEBUG = true;
+        // 自分の送信データを表示
+        const bool DISP_MYDATA = true;
 
         // ポーリング間隔
         const long PORING_MSEC = 3000;
@@ -26,15 +29,15 @@ namespace TgsExServer
 
         // UDP
         int localPort = 60000;
-        UdpClient udp;
+        UdpClient udp = null;
 
         /** 終了*/
         bool isClose = false;
         
         /** テストデータ*/
         string [][] testData ={
-            new string[] {"21531999","124.124.124.124","1","o","path2"},
-            new string[] {"21531000","123.123.123.123","0","o","path"}
+            new string[] {"21531999","124.124.124.124","1","o"},
+            new string[] {"21531000","123.123.123.123","0","o"}
         };
 
         /** 見出し用ラベル*/
@@ -50,7 +53,6 @@ namespace TgsExServer
             IP,
             COUNT,
             ALERT,
-            PATH,
             MAX
         };
 
@@ -60,7 +62,6 @@ namespace TgsExServer
             AnchorStyles.Left,
             AnchorStyles.Left,
             AnchorStyles.Right,
-            AnchorStyles.Left,
             AnchorStyles.Left
                         };
 
@@ -86,8 +87,7 @@ namespace TgsExServer
                                  indata[0],
                                  indata[1],
                                  indata[2],
-                                 indata[3],
-                                 indata[4]
+                                 indata[3]
                              };
 
             labels.Add(createLabels(datas));
@@ -117,9 +117,21 @@ namespace TgsExServer
         /** 起動時処理*/
         private void Form1_Load(object sender, EventArgs e)
         {
+            // 設定読み込み
+            string config = Path.GetDirectoryName(Application.ExecutablePath) + "\\config.dat";
+            if (!File.Exists(config))
+            {
+                MessageBox.Show("実行ファイルと同じ場所にconfig.datがありません。");
+                Application.Exit();
+                return;
+            }
+
+            textBox1.Text = File.ReadAllText(config);
+            textBox1.Text = Path.GetDirectoryName(textBox1.Text.Trim()) + "\\";
+
             // タイトルの作成
             tableLayoutPanel1.RowCount = 1;
-            string[] LABEL = { "通し番号", "学籍番号", "IP", "コピペ", "接続", "パス" };
+            string[] LABEL = { "通し番号", "学籍番号", "IP", "コピペ", "接続" };
             labelsHeader.Add(createLabels(LABEL));
 
             for (int i = 0; i < LABEL.Length; i++)
@@ -139,20 +151,6 @@ namespace TgsExServer
                 }
                 sortLabels();
             }
-
-            // UDP起動
-            udp = new UdpClient(localPort);
-            udp.DontFragment = true;    // 断片化を防ぐ
-            udp.EnableBroadcast = true; // ブロードキャスト許可
-
-            // 受信を開始
-            udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
-
-            // ポーリングの開始
-            timer1.Enabled = true;
-
-            // メッセージ用フォーム表示
-            messageForm.Show();
         }
 
         /**
@@ -233,7 +231,6 @@ namespace TgsExServer
                     rowstrings[1] = remoteIP;
                     rowstrings[2] = recvs[2];
                     rowstrings[3] = "o";
-                    rowstrings[4] = recvs[3];
                     addMember(rowstrings);
                 }
                 else {
@@ -242,7 +239,6 @@ namespace TgsExServer
                     setLabelsText(idx,COL.UID,rowstrings[1]+"("+rowstrings[0]+")");
                     setLabelsText(idx,COL.ALERT,"o");
                     setLabelsText(idx,COL.COUNT,rowstrings[2]);
-                    setLabelsText(idx,COL.PATH,rowstrings[3]);
                 }
                 // ソート
                 sortLabels();
@@ -250,7 +246,7 @@ namespace TgsExServer
             // それ以外
             else {
                 // 呼び出し以外の時はエラー
-                if (recvs[0] != "call")
+                if (recvs[0] != "call" || DISP_MYDATA)
                 {
                     messageForm.sMes += remoteIP + " : ";
                     for (int i = 0; i < recvs.Length; i++)
@@ -268,35 +264,6 @@ namespace TgsExServer
             // 非同期開始
             udp.BeginReceive(ReceiveCallback, udp);
         }
-
-        /** 更新されたメンバーを表示*/
-        /*
-        void printMember()
-        {
-            tableLayoutPanel1.Visible = false;
-            for (int i = 0 ; i < (labels.Count/(int)COL.MAX)-1 ; i++)
-            {
-                if (getLabelsText(i,COL.UPDATE).Length > 0)
-                {
-                    setLabelsText(i,COL.UPDATE,"");
-                    // 行を出力
-                    printRow(i, mems);
-                }
-            }
-            tableLayoutPanel1.Visible = true;
-        }*/
-
-        /** 行を表示*/
-        /*
-        void printRow(int row, string[][] mems)
-        {
-            // データ
-            for (int i = 0; i <mems[0].Length; i++)
-            {
-                labels[row + 1][i+1].Text = mems[row][i];
-            }
-        }
-         */
 
         /**
          * ラベルを並び替える
@@ -341,16 +308,16 @@ namespace TgsExServer
             timer1.Enabled = false;
 
             isClose = true;
-            udp.Close();
+            if (udp != null)
+            {
+                udp.Close();
+            }
             udp = null;
         }
 
         /** ポーリング*/
         private void timer1_Tick(object sender, EventArgs e)
         {
-            // データ更新
-            //printRow(0, testData);
-
             // ポーリングするか
             iPoringCount++;
             if (iPoringCount * timer1.Interval < PORING_MSEC)
@@ -366,8 +333,29 @@ namespace TgsExServer
 
             // ブロードキャストで送信
             Byte[] dat =
-                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser);
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser+","+textBox1.Text);
             udp.Send(dat, dat.Length, "255.255.255.255", localPort);
+        }
+
+        /** 開始*/
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // UDP起動
+            udp = new UdpClient(localPort);
+            udp.DontFragment = true;    // 断片化を防ぐ
+            udp.EnableBroadcast = true; // ブロードキャスト許可
+
+            // 受信を開始
+            udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
+
+            // ポーリングの開始
+            timer1.Enabled = true;
+
+            // メッセージ用フォーム表示
+            messageForm.Show();
+
+            // ボタン無効
+            button1.Enabled = false;
         }
     }
 }

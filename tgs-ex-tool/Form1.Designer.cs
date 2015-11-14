@@ -56,6 +56,7 @@
             this.textUID.Size = new System.Drawing.Size(208, 29);
             this.textUID.TabIndex = 1;
             this.textUID.TextChanged += new System.EventHandler(this.textUID_TextChanged);
+            this.textUID.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textUID_KeyUp);
             // 
             // btnEntry
             // 

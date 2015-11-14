@@ -300,5 +300,17 @@ namespace 試験登録
             // 保存
             bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
         }
+
+        // [Enter]キーに反応
+        private void textUID_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Return)
+            {
+                if (btnEntry.Enabled)
+                {
+                    btnEntry_Click(sender, null);
+                }
+            }
+        }
     }
 }

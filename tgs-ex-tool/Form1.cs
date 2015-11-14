@@ -24,6 +24,8 @@ namespace 試験登録
         const int CLIENT_PORT = 60001;
         /** サーバーポート*/
         const int SERVER_PORT = 60000;
+        /** サーバーIP*/
+        string remoteIP = "";
         /** 閉じる処理*/
         bool isClose = false;
         /** コピーペースト回数*/
@@ -63,7 +65,7 @@ namespace 試験登録
 
             IPEndPoint remoteEP = null;
             Byte[] dat = client.EndReceive(ar, ref remoteEP);
-            string remoteIP = remoteEP.Address.ToString();
+            remoteIP = remoteEP.Address.ToString();
             string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
 
             // コンマで分解
@@ -105,7 +107,6 @@ namespace 試験登録
             // タスクバーから隠す
             this.ShowInTaskbar = false; 
 
-            // 受信開始
             // 受信の開始
             if (client == null)
             {
@@ -167,6 +168,19 @@ namespace 試験登録
                 {
                     ee.ToString();
                 }
+            }
+        }
+
+        /** フォームを閉じる処理*/
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (client != null && !isClose && remoteIP.Length > 0)
+            {
+                Byte[] send =
+                    System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                    "shutdown,"
+                    + sUID);
+                client.Send(send, send.Length, remoteIP, SERVER_PORT);
             }
         }
     }

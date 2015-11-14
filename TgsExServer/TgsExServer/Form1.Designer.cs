@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.button1 = new System.Windows.Forms.Button();
@@ -83,6 +84,7 @@
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.tableLayoutPanel1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "試験サーバー";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);

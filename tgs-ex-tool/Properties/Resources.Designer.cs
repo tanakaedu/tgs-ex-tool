@@ -63,9 +63,9 @@ namespace 試験登録.Properties {
         /// <summary>
         ///   (アイコン) に類似した型 System.Drawing.Icon のローカライズされたリソースを検索します。
         /// </summary>
-        internal static System.Drawing.Icon tgsex {
+        internal static System.Drawing.Icon client {
             get {
-                object obj = ResourceManager.GetObject("tgsex", resourceCulture);
+                object obj = ResourceManager.GetObject("client", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
             }
         }

@@ -51,12 +51,15 @@
             this.textUID.ImeMode = System.Windows.Forms.ImeMode.Alpha;
             this.textUID.Location = new System.Drawing.Point(130, 10);
             this.textUID.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
+            this.textUID.MaxLength = 8;
             this.textUID.Name = "textUID";
             this.textUID.Size = new System.Drawing.Size(208, 29);
             this.textUID.TabIndex = 1;
+            this.textUID.TextChanged += new System.EventHandler(this.textUID_TextChanged);
             // 
             // btnEntry
             // 
+            this.btnEntry.Enabled = false;
             this.btnEntry.Location = new System.Drawing.Point(26, 54);
             this.btnEntry.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             this.btnEntry.Name = "btnEntry";
@@ -77,7 +80,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 21F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(362, 108);
+            this.ClientSize = new System.Drawing.Size(362, 107);
             this.Controls.Add(this.btnEntry);
             this.Controls.Add(this.textUID);
             this.Controls.Add(this.label1);

@@ -16,8 +16,6 @@ namespace TgsExServer
     {
         // デバッグデータの利用
         const bool USE_DEBUG = true;
-        // 自分の送信データを表示
-        const bool DISP_MYDATA = true;
 
         // ポーリング間隔
         const long PORING_MSEC = 3000;
@@ -27,8 +25,11 @@ namespace TgsExServer
         // 送信回数
         int Ser = 0;
 
-        // UDP
-        int localPort = 60000;
+        /** UDPポート*/
+        const int CLIENT_PORT = 60001;
+        /** サーバーポート*/
+        const int SERVER_PORT = 60000;
+        /** UDPクライアント*/
         UdpClient udp = null;
 
         /** 終了*/
@@ -44,6 +45,8 @@ namespace TgsExServer
         List<Label[]> labelsHeader = new List<Label[]>();
         /** ラベルリスト*/
         List<Label[]> labels = new List<Label[]>();
+        /** 受信したデータ*/
+        List<string[]> recvDatas = new List<string[]>();
 
         /** 列名*/
         enum COL
@@ -76,7 +79,7 @@ namespace TgsExServer
 
         /** 
          * 指定の文字列配列の行を新しく作成して、テーブルの最後に追加する
-         * @param string[5] indata 学籍番号からパスまでのデータ。インデックスは含まない
+         * @param string[4] indata 学籍番号からALERTまでのデータ。インデックスは含まない
          */
         void addMember(string[] indata)
         {
@@ -185,7 +188,7 @@ namespace TgsExServer
          */
         int getUserIndexWithIP(string ip)
         {
-            for (int i = 0; i < labels.Count-1; i++)
+            for (int i = 0; i < labels.Count; i++)
             {
                 if (ip == getLabelsText(i,COL.IP))
                 {
@@ -202,64 +205,14 @@ namespace TgsExServer
             if (udp == null || isClose) return;
             IPEndPoint remoteEP = null;
             Byte[] dat = udp.EndReceive(ar, ref remoteEP);
-            string remoteIP = remoteEP.Address.ToString();
             string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
+            string [] recvs = recv.Split(new char[] { ',' });
+            string [] recvsip = new string[recvs.Length+1];
+            Array.Copy(recvs,recvsip,recvs.Length);
+            recvsip[recvs.Length] = remoteEP.Address.ToString();
 
-            // コンマで分解
-            string[] recvs = recv.Split(new char[] { ',' });
-            string[] rowstrings = new string[(int)COL.MAX];
-
-            // 登録済みか確認
-            int idx = getUserIndexWithIP(remoteIP);
-
-            // シャットダウン
-            if (recvs[0] == "shutdown")
-            {
-                if (idx != -1)
-                {
-                    setLabelsText(idx, COL.ALERT, "x");
-                    setLabelsText(idx, COL.UID, rowstrings[1]);
-                    // ソート
-                    sortLabels();
-                }
-            }
-            // データを受信
-            else if (recvs.Length == 4) {
-                if (idx == -1) {
-                    // 新規なので登録
-                    rowstrings[0] = recvs[1]+"("+recvs[0]+")";
-                    rowstrings[1] = remoteIP;
-                    rowstrings[2] = recvs[2];
-                    rowstrings[3] = "o";
-                    addMember(rowstrings);
-                }
-                else {
-                    // 既存のメンバー
-                    setLabelsText(idx,COL.IP,remoteIP);
-                    setLabelsText(idx,COL.UID,rowstrings[1]+"("+rowstrings[0]+")");
-                    setLabelsText(idx,COL.ALERT,"o");
-                    setLabelsText(idx,COL.COUNT,rowstrings[2]);
-                }
-                // ソート
-                sortLabels();
-            }
-            // それ以外
-            else {
-                // 呼び出し以外の時はエラー
-                if (recvs[0] != "call" || DISP_MYDATA)
-                {
-                    messageForm.sMes += remoteIP + " : ";
-                    for (int i = 0; i < recvs.Length; i++)
-                    {
-                        if (i > 0)
-                        {
-                            messageForm.sMes += ",";
-                        }
-                        messageForm.sMes += recvs[i];
-                    }
-                    messageForm.sMes += "\r\n";
-                }
-            }
+            // IPを追加したデータを登録
+            recvDatas.Add(recvsip) ;
 
             // 非同期開始
             udp.BeginReceive(ReceiveCallback, udp);
@@ -315,9 +268,12 @@ namespace TgsExServer
             udp = null;
         }
 
-        /** ポーリング*/
+        /** 受信データの処理とポーリング*/
         private void timer1_Tick(object sender, EventArgs e)
         {
+            // 受信データの処理
+            procRecvs();
+
             // ポーリングするか
             iPoringCount++;
             if (iPoringCount * timer1.Interval < PORING_MSEC)
@@ -334,14 +290,89 @@ namespace TgsExServer
             // ブロードキャストで送信
             Byte[] dat =
                 System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser+","+textBox1.Text);
-            udp.Send(dat, dat.Length, "255.255.255.255", localPort);
+            udp.Send(dat, dat.Length, "255.255.255.255", CLIENT_PORT);
+        }
+
+        /** 受信データを処理*/
+        void procRecvs()
+        {
+            string[] rowstrings = new string[(int)COL.ALERT];
+            bool isChange = false;
+
+            while (recvDatas.Count > 0) {
+                // 登録済みか確認
+                int idx = getUserIndexWithIP(recvDatas[0][recvDatas[0].Length-1]);
+
+                // シャットダウン
+                if (recvDatas[0][0] == "shutdown")
+                {
+                    if (idx != -1)
+                    {
+                        setLabelsText(idx, COL.ALERT, "x");
+                        // 学籍番号を登録
+                        setLabelsText(idx, COL.UID, recvDatas[0][1]);
+                        // 変更フラグ
+                        isChange = true;
+                    }
+                }
+                // データを受信(受信データ+IP)
+                else if (recvDatas[0].Length == (int)(COL.ALERT))
+                {
+                    if (idx == -1)
+                    {
+                        // 新規なので登録
+                        rowstrings[0] = recvDatas[0][1];    // UID
+                        rowstrings[1] = recvDatas[0][3];    // IP
+                        rowstrings[2] = recvDatas[0][2];    // コピペ回数
+                        rowstrings[3] = "o("+recvDatas[0][0]+")";                // 通信(シリアル)
+                        addMember(rowstrings);
+                    }
+                    else
+                    {
+                        // 既存のメンバー
+                        setLabelsText(idx, COL.IP, recvDatas[0][3]);    // IP
+                        setLabelsText(idx, COL.UID, recvDatas[0][1]);
+                        setLabelsText(idx, COL.ALERT, "o" + "(" + recvDatas[0][0] + ")");
+                        setLabelsText(idx, COL.COUNT, recvDatas[0][2]);
+                    }
+                    // 更新
+                    isChange = true;
+                }
+                // それ以外
+                else
+                {
+                    // 呼び出し以外の時はエラー
+                    if (recvDatas[0][0] != "call")
+                    {
+                        messageForm.sMes += recvDatas[0][3] + " : ";
+                        for (int i = 0; i < recvDatas[0].Length; i++)
+                        {
+                            if (i > 0)
+                            {
+                                messageForm.sMes += ",";
+                            }
+                            messageForm.sMes += recvDatas[0][i];
+                        }
+                        messageForm.sMes += "\r\n";
+                    }
+                }
+
+                // 処理したデータを削除
+                recvDatas.RemoveAt(0);
+            }
+
+            // 変更があったらソート実行
+            if (isChange)
+            {
+                sortLabels();
+            }
         }
 
         /** 開始*/
         private void button1_Click(object sender, EventArgs e)
         {
             // UDP起動
-            udp = new UdpClient(localPort);
+            udp = new UdpClient(SERVER_PORT);
             udp.DontFragment = true;    // 断片化を防ぐ
             udp.EnableBroadcast = true; // ブロードキャスト許可
 

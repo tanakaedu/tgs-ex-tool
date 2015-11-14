@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 
 namespace 試験登録
 {
@@ -16,6 +18,16 @@ namespace 試験登録
         string sSaveFolder = "";
         /** 送信学籍番号*/
         string sUID = "";
+        /** UDPクライアント*/
+        UdpClient client = null;
+        /** UDPポート*/
+        const int CLIENT_PORT = 60001;
+        /** サーバーポート*/
+        const int SERVER_PORT = 60000;
+        /** 閉じる処理*/
+        bool isClose = false;
+        /** コピーペースト回数*/
+        int iCopyPasteCount = 0;
 
         public Form1()
         {
@@ -33,19 +45,47 @@ namespace 試験登録
                 Application.Exit();
                 return;
             }
+        }
 
+        /** 受信データのインデックス*/
+        enum RECV
+        {
+            MES,
+            SER,
+            PATH,
+            MAX
+        }
 
-            string config = Path.GetDirectoryName(Application.ExecutablePath)+"\\config.dat";
-            if (!File.Exists(config))
+        /** 受信コールバック*/
+        public void ReceiveCallback(IAsyncResult ar)
+        {
+            if (client == null || isClose) return;
+
+            IPEndPoint remoteEP = null;
+            Byte[] dat = client.EndReceive(ar, ref remoteEP);
+            string remoteIP = remoteEP.Address.ToString();
+            string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
+
+            // コンマで分解
+            string[] recvs = recv.Split(new char[] { ',' });
+
+            // 呼び出しか確認
+            if ((recvs[0] == "call") && (recvs.Length == (int)RECV.MAX))
             {
-                MessageBox.Show("実行ファイルと同じ場所にconfig.datがありません。");
-                Application.Exit();
-                return;
+                // 保存先パスを受け取る
+                sSaveFolder = recvs[(int)RECV.PATH];
+
+                // サーバー相手に送り返す
+                Byte[] send =
+                    System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                    recvs[(int)RECV.SER] + ","
+                    + sUID+","
+                    + iCopyPasteCount);
+                client.Send(send, send.Length, remoteIP,SERVER_PORT);
             }
 
-            // 設定読み込み
-            sSaveFolder = File.ReadAllText(config);
-            sSaveFolder = Path.GetDirectoryName(sSaveFolder.Trim())+"\\";
+            // 非同期開始
+            client.BeginReceive(ReceiveCallback, client);
         }
 
         /** ボタンが押された*/
@@ -65,7 +105,16 @@ namespace 試験登録
             // タスクバーから隠す
             this.ShowInTaskbar = false; 
 
-
+            // 受信開始
+            // 受信の開始
+            if (client == null)
+            {
+                client = new UdpClient(CLIENT_PORT);
+                client.DontFragment = true;
+                client.EnableBroadcast = true;
+                // 受信開始
+                client.BeginReceive(ReceiveCallback, client);
+            }
         }
 
         /** 全角＞半角数字変換*/
@@ -94,6 +143,31 @@ namespace 試験登録
         {
             // フォームを復帰
             this.WindowState = FormWindowState.Normal;
+        }
+
+        /** 数値8桁入るまで無効*/
+        private void textUID_TextChanged(object sender, EventArgs e)
+        {
+            btnEntry.Enabled = false;
+
+            if (textUID.Text.Length > 0)
+            {
+                string han = convZen2Han(textUID.Text);
+                try
+                {
+                    int iuid = int.Parse(han);
+
+                    // 桁数チェック
+                    if (iuid >= 20000000)
+                    {
+                        btnEntry.Enabled = true;
+                    }
+                }
+                catch (Exception ee)
+                {
+                    ee.ToString();
+                }
+            }
         }
     }
 }

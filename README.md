@@ -15,5 +15,6 @@
 # 参考URL
 - [atmarkit クリップボードからデータを受け取るには？](http://www.atmarkit.co.jp/fdotnet/dotnettips/152getclipbrd/getclipbrd.html)
 - [DOBON.NET 画面をキャプチャする](http://dobon.net/vb/dotnet/graphics/screencapture.html)
+- [Microsoft Developer Network. 非同期なサーバーのソケットの例](https://msdn.microsoft.com/ja-jp/library/fx6588te(v=vs.110).aspx)
 - [DOBON.NET TCPクライアント・サーバープログラムを作成する](http://dobon.net/vb/dotnet/internet/tcpclientserver.html)
 

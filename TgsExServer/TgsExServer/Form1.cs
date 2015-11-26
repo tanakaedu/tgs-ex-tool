@@ -14,6 +14,8 @@ namespace TgsExServer
 {
     public partial class Form1 : Form
     {
+        public static Form1 form1;
+
         // デバッグデータの利用
         const bool USE_DEBUG = false;
 
@@ -69,11 +71,15 @@ namespace TgsExServer
                         };
 
         /** メッセージ用フォーム*/
-        MessageForm messageForm = new MessageForm();
+        MessageForm messageForm = null;
+
+        /** TCP通信用クラス*/
+        TcpServer tcpServer = null;
 
         /** コンストラクタ*/
         public Form1()
         {
+            form1 = this;
             InitializeComponent();
         }
 
@@ -124,12 +130,13 @@ namespace TgsExServer
             string config = Path.GetDirectoryName(Application.ExecutablePath) + "\\config.dat";
             if (!File.Exists(config))
             {
-                MessageBox.Show("実行ファイルと同じ場所にconfig.datがありません。");
-                Application.Exit();
-                return;
+                textBox1.Text = Path.GetDirectoryName(Application.ExecutablePath) + "\\" + textBox1.Text+"\\";
+                MessageBox.Show("実行ファイルと同じ場所にconfig.datがないのでデフォルトフォルダに保存します。");
             }
-
-            textBox1.Text = File.ReadAllText(config);
+            else
+            {
+                textBox1.Text = File.ReadAllText(config);
+            }
             textBox1.Text = Path.GetDirectoryName(textBox1.Text.Trim()) + "\\";
 
             // タイトルの作成
@@ -197,6 +204,18 @@ namespace TgsExServer
                 }
             }
             return -1;
+        }
+
+        /** 指定のIPに対応するユーザーの学籍番号を返す
+         */
+        public string getUIDWithIP(string ip)
+        {
+            int idx = getUserIndexWithIP(ip);
+            if (idx == -1)
+            {
+                return "";
+            }
+            return getLabelsText(idx, COL.UID);
         }
 
         /** 受信コールバック*/
@@ -390,6 +409,7 @@ namespace TgsExServer
                 udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
 
                 // メッセージ用フォーム表示
+                messageForm = new MessageForm();
                 messageForm.Show();
 
                 // ボタン変更
@@ -397,10 +417,23 @@ namespace TgsExServer
 
                 // ポーリングの開始
                 timer1.Enabled = true;
+
+                // TCP開始
+                if (tcpServer == null)
+                {
+                    tcpServer = new TcpServer(textBox1.Text, textBox2);
+                }
             }
 
             // 送信実行
             sendCall();
+        }
+
+        /** フォームを閉じる*/
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // TCPを閉じる
+            tcpServer.closeTcpListener();
         }
     }
 }

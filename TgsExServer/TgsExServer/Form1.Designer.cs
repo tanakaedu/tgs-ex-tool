@@ -34,6 +34,7 @@
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.button1 = new System.Windows.Forms.Button();
             this.textBox1 = new System.Windows.Forms.TextBox();
+            this.textBox2 = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -75,18 +76,30 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(627, 19);
             this.textBox1.TabIndex = 2;
+            this.textBox1.Text = "scdir";
+            // 
+            // textBox2
+            // 
+            this.textBox2.Location = new System.Drawing.Point(12, 458);
+            this.textBox2.Multiline = true;
+            this.textBox2.Name = "textBox2";
+            this.textBox2.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.textBox2.Size = new System.Drawing.Size(708, 92);
+            this.textBox2.TabIndex = 3;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(732, 562);
+            this.Controls.Add(this.textBox2);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "試験サーバー";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.SizeChanged += new System.EventHandler(this.Form1_SizeChanged);
@@ -101,6 +114,7 @@
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox textBox2;
 
 
     }

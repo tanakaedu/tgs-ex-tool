@@ -36,8 +36,8 @@ namespace 試験登録
         /** イベントハンドら*/
         private MyClipboardViewer viewer;
 
-        /** TCP送信クラス*/
-        TcpClient tcpClient = new TcpClient();
+        /** 送信データプール*/
+        List<SendData> sendDataList = new List<SendData>();
 
         public Form1()
         {
@@ -50,20 +50,17 @@ namespace 試験登録
         // クリップボードにテキストがコピーされると呼び出される
         private void OnClipBoardChanged(object sender, ClipbardEventArgs args)
         {
-            // 保存先確認
-            string path = getSavePath();
-            if (path.Length == 0) return;
+            // サーバーとの通信が成功してから
+            if (remoteIP.Length == 0)
+            {
+                return;
+            }
 
             // カウンター
             iCopyPasteCount++;
 
-            // フォルダー作成
-            Directory.CreateDirectory(path);
-
-            // テキスト保存
-            File.WriteAllText(path + "\\copy.txt", args.Text);
-            // スクリーンショット保存
-            ScreenShot(path + "\\scr.png");
+            // データをプッシュする
+            SendData.Add(getScreenShot(), Encoding.UTF8.GetBytes(args.Text));
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -125,17 +122,6 @@ namespace 試験登録
         {
             // 全角だったら半角に変換して記録
             sUID = convZen2Han(textUID.Text);
-            // メッセージ
-            MessageBox.Show(sUID + "：登録しました。");
-
-            // フォームを最小化
-            this.WindowState = FormWindowState.Minimized;
-
-            // ボタン名変更
-            btnEntry.Text = "学籍番号を変更";
-
-            // タスクバーから隠す
-            this.ShowInTaskbar = false; 
 
             // 受信の開始
             if (client == null)
@@ -146,6 +132,25 @@ namespace 試験登録
                 // 受信開始
                 client.BeginReceive(ReceiveCallback, client);
             }
+
+            // サーバーに接続を伝える
+            Byte[] send =
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                "-," + sUID + ",-");
+            client.Send(send, send.Length, "255.255.255.255", SERVER_PORT);
+
+            // メッセージ
+            MessageBox.Show(sUID + "：登録しました。");
+
+            // フォームを最小化
+            this.WindowState = FormWindowState.Minimized;
+
+            // ボタン名変更
+            btnEntry.Text = "学籍番号を変更";
+
+            // タスクバーから隠す
+            this.ShowInTaskbar = false;
+
         }
 
         /** 全角＞半角数字変換*/
@@ -214,30 +219,6 @@ namespace 試験登録
             }
         }
 
-        /** パス文字列を生成
-         * 受け取った保存先 > 学籍番号 > 日時
-         * @return 空=無効 / パス文字列
-         */
-        string getSavePath()
-        {
-            if (sSaveFolder.Length == 0)
-            {
-                return "";
-            }
-            string time = DateTime.Now.ToLongTimeString().Replace(':','-');
-            string path = sSaveFolder + sUID + "\\" + time;
-            for (int i = 0; i<10 ; i++)
-            {
-                if (!Directory.Exists(path+"-"+i)) {
-                    return path + "-" + i;
-                }
-            }
-
-            // 1秒で10個以上は無効
-            return "";
-        }
-
-
         private const int SRCCOPY = 13369376;
         private const int CAPTUREBLT = 1073741824;
 
@@ -276,8 +257,8 @@ namespace 試験登録
         private static extern int GetWindowRect(IntPtr hwnd,
             ref  RECT lpRect);
 
-        /** 指定のパスにスクリーンショットを保存*/
-        void ScreenShot(string path)
+        /** スクリーンショットのバイト配列を返す*/
+        byte[] getScreenShot()
         {
             //アクティブなウィンドウのデバイスコンテキストを取得
             IntPtr hWnd = GetForegroundWindow();
@@ -286,7 +267,6 @@ namespace 試験登録
             RECT winRect = new RECT();
             GetWindowRect(hWnd, ref winRect);
             
-
             //Bitmapの作成
             Bitmap bmp = new Bitmap(winRect.right - winRect.left,
                 winRect.bottom - winRect.top);
@@ -308,7 +288,7 @@ namespace 試験登録
             bmp.Save(mem, System.Drawing.Imaging.ImageFormat.Png);
             byte[] dt = mem.ToArray();
             bmp.Dispose();
-            tcpClient.SendTcp(remoteIP, "scshot.png", dt);
+            return dt;
         }
 
         // [Enter]キーに反応
@@ -320,6 +300,15 @@ namespace 試験登録
                 {
                     btnEntry_Click(sender, null);
                 }
+            }
+        }
+
+        /** 蓄積があれば送信*/
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if ((sUID.Length > 0) && (client != null))
+            {
+                SendData.Send(remoteIP);
             }
         }
     }

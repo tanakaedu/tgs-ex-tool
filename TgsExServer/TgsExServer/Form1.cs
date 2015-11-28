@@ -348,7 +348,7 @@ namespace TgsExServer
                         rowstrings[0] = recvDatas[0][1];    // UID
                         rowstrings[1] = recvDatas[0][3];    // IP
                         rowstrings[2] = recvDatas[0][2];    // コピペ回数
-                        rowstrings[3] = "o("+recvDatas[0][0]+")";                // 通信(シリアル)
+                        rowstrings[3] = "o(" + recvDatas[0][0] + ")";   // 通信(シリアル)
                         addMember(rowstrings);
                     }
                     else

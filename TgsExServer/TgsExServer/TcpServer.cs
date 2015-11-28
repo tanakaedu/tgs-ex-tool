@@ -57,9 +57,11 @@ namespace TgsExServer
 
         /** パス文字列を生成
          * 受け取った保存先 > 学籍番号 > 日時
-         * @return 空=無効 / パス文字列
+         * @param string ip 送信先のIPアドレス
+         * @param string fname ファイル名
+         * @return 空=無効 / パス文字列。最後に\を付けてある
          */
-        string getSavePath(string ip)
+        string getSavePath(string ip, string fname)
         {
             if (Form1.form1.textBox1.Text.Length == 0)
             {
@@ -75,9 +77,9 @@ namespace TgsExServer
             string path = Form1.form1.textBox1.Text + sUID + @"\" + time;
             for (int i = 0; i < 100; i++)
             {
-                if (!Directory.Exists(path + "-" + i))
+                if (!File.Exists(path + "-" + i + @"\" + fname))
                 {
-                    return path + "-" + i;
+                    return path + "-" + i + @"\";
                 }
             }
 
@@ -105,86 +107,98 @@ namespace TgsExServer
                 // 接続要求を受け入れる
                 Task<TcpClient> taskClient = listener.AcceptTcpClientAsync();
                 if (taskClient.Status == TaskStatus.Faulted) break;
-                TcpClient client = await taskClient;
-                string ip = ((System.Net.IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
-                textStatus.Text += "クライアント(" +ip
-                    + ":" + ((System.Net.IPEndPoint)client.Client.RemoteEndPoint).Port + ")と接続しました。\r\n";
-
-                // NetworkStreamを取得
-                NetworkStream stream = client.GetStream();
-
-                // タイムアウトを10秒に設定
-                stream.ReadTimeout = 10000;
-                stream.WriteTimeout = 10000;
-
-                // 受信データ容量を確認
-                int fileSize = (stream.ReadByte() << 24) + (stream.ReadByte() << 16) + (stream.ReadByte() << 8) + stream.ReadByte();
-                // サイズが異常な時はエラーにしておく
-                if ((fileSize < 0) || (fileSize > 10000000))
+                try
                 {
-                    textStatus.Text += "ファイルサイズが異常なのでキャンセルします。\r\n";
-                    stream.Close();
-                    client.Close();
-                    continue;
-                }
+                    TcpClient client = await taskClient;
 
-                // クライアントからのデータを受け取る
-                bool disconnected = false;
-                System.IO.MemoryStream ms = new System.IO.MemoryStream();
-                byte[] resBytes = new byte[256];
-                int resSize = 0;
-                do
-                {
-                    // データの一部を受信
-                    resSize = stream.Read(resBytes, 0, resBytes.Length);
-                    // Readが0の時は切断
-                    if (resSize == 0)
+                    string ip = ((System.Net.IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                    textStatus.Text += "クライアント(" + ip
+                        + ":" + ((System.Net.IPEndPoint)client.Client.RemoteEndPoint).Port + ")と接続しました。\r\n";
+
+                    // NetworkStreamを取得
+                    NetworkStream stream = client.GetStream();
+
+                    // タイムアウトを10秒に設定
+                    stream.ReadTimeout = 10000;
+                    stream.WriteTimeout = 10000;
+
+                    // 受信データ容量を確認
+                    int fileSize = (stream.ReadByte() << 24) + (stream.ReadByte() << 16) + (stream.ReadByte() << 8) + stream.ReadByte();
+                    // サイズが異常な時はエラーにしておく
+                    if ((fileSize < 0) || (fileSize > 10000000))
                     {
-                        disconnected = true;
-                        textStatus.Text += "クライアントが切断しました。\r\n";
-                        break;
+                        textStatus.Text += "ファイルサイズが異常なのでキャンセルします。\r\n";
+                        stream.Close();
+                        client.Close();
+                        continue;
                     }
-                    // 受信したデータを蓄積
-                    ms.Write(resBytes, 0, resSize);
-                }
-                while (stream.DataAvailable || (ms.Length<fileSize-4));
 
-                // 受信データを保存
-                ms.Position = 0;
-                string fname = getSavePath(ip);
-                if (fname.Length == 0)
-                {
-                    textStatus.Text += "保存先が無効です。\r\n";
+                    // クライアントからのデータを受け取る
+                    bool disconnected = false;
+                    System.IO.MemoryStream ms = new System.IO.MemoryStream();
+                    byte[] resBytes = new byte[256];
+                    int resSize = 0;
+                    do
+                    {
+                        // データの一部を受信
+                        resSize = stream.Read(resBytes, 0, resBytes.Length);
+                        // Readが0の時は切断
+                        if (resSize == 0)
+                        {
+                            disconnected = true;
+                            textStatus.Text += "クライアントが切断しました。\r\n";
+                            break;
+                        }
+                        // 受信したデータを蓄積
+                        ms.Write(resBytes, 0, resSize);
+                    }
+                    while (stream.DataAvailable || (ms.Length < fileSize - 4));
+
+                    // 受信データを保存
+                    ms.Position = 0;
+                    string fname = getFileName(ms);
+                    string savepath = getSavePath(ip, fname);
+                    if (savepath.Length == 0)
+                    {
+                        textStatus.Text += "保存先が無効です。\r\n";
+                        ms.Close();
+                        stream.Close();
+                        client.Close();
+                        continue;
+                    }
+                    if (!Directory.Exists(savepath))
+                    {
+                        Directory.CreateDirectory(savepath);
+                    }
+                    byte[] savedata = getData(ms);
+                    File.WriteAllBytes(savepath+fname, savedata);
                     ms.Close();
+
+                    // 出力履歴
+                    textStatus.Text += savepath+fname + ":" + savedata.Length + "bytes\r\n";
+
+                    if (!disconnected)
+                    {
+                        // クライアントにデータ送信
+                        string sendMsg = savedata.Length.ToString();
+                        byte[] sendBytes = Encoding.UTF8.GetBytes(sendMsg + '\n');
+                        stream.Write(sendBytes, 0, sendBytes.Length);
+                        textStatus.Text += "send " + sendMsg + "bytes\r\n";
+                    }
+
+                    // 閉じる
                     stream.Close();
                     client.Close();
-                    continue;
+                    textStatus.Text += "クライアントとの接続を閉じました。\r\n";
                 }
-                if (!Directory.Exists(fname))
+                catch (Exception ee)
                 {
-                    Directory.CreateDirectory(fname);
+                    if (isLoop)
+                    {
+                        textStatus.Text += ee.ToString() + "\r\n";
+                    }
+                    return;
                 }
-                fname += @"\"+getFileName(ms);
-                byte [] savedata = getData(ms);
-                File.WriteAllBytes(fname, savedata);
-                ms.Close();
-
-                // 出力履歴
-                textStatus.Text += fname+":"+savedata.Length + "bytes\r\n";
-
-                if (!disconnected)
-                {
-                    // クライアントにデータ送信
-                    string sendMsg = savedata.Length.ToString();
-                    byte[] sendBytes = Encoding.UTF8.GetBytes(sendMsg + '\n');
-                    stream.Write(sendBytes, 0, sendBytes.Length);
-                    textStatus.Text += "send "+sendMsg+"bytes\r\n";
-                }
-
-                // 閉じる
-                stream.Close();
-                client.Close();
-                textStatus.Text += "クライアントとの接続を閉じました。\r\n";
             }
             // リスナを閉じる
             closeTcpListener();

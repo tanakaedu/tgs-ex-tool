@@ -232,6 +232,12 @@ namespace TgsExServer
 
             // 非同期開始
             udp.BeginReceive(ReceiveCallback, udp);
+
+            // pingの時は強制実行
+            if (recvsip[0] == "ping")
+            {
+                sendCall();
+            }
         }
 
         /**
@@ -308,12 +314,19 @@ namespace TgsExServer
             // ポーリング開始
             iPoringCount = 0;
             Ser++;
-            Text = "試験サーバー(" + Ser + ")";
+            try
+            {
+                Text = "試験サーバー(" + Ser + ")";
+            }
+            catch (Exception ee)
+            {
+                Console.WriteLine(ee.ToString());
+            }
             Application.DoEvents();
 
             // ブロードキャストで送信
             Byte[] dat =
-                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser + "," + textBox1.Text);
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes("call," + Ser);
             udp.Send(dat, dat.Length, "255.255.255.255", CLIENT_PORT);
         }
 

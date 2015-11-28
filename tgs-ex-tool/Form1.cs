@@ -81,7 +81,6 @@ namespace 試験登録
         {
             MES,
             SER,
-            PATH,
             MAX
         }
 
@@ -90,31 +89,38 @@ namespace 試験登録
         {
             if (client == null || isClose) return;
 
-            IPEndPoint remoteEP = null;
-            Byte[] dat = client.EndReceive(ar, ref remoteEP);
-            remoteIP = remoteEP.Address.ToString();
-            string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
-
-            // コンマで分解
-            string[] recvs = recv.Split(new char[] { ',' });
-
-            // 呼び出しか確認
-            if ((recvs[0] == "call") && (recvs.Length == (int)RECV.MAX))
+            try
             {
-                // 保存先パスを受け取る
-                sSaveFolder = recvs[(int)RECV.PATH];
+                IPEndPoint remoteEP = null;
+                Byte[] dat = client.EndReceive(ar, ref remoteEP);
+                remoteIP = remoteEP.Address.ToString();
+                string recv = System.Text.Encoding.GetEncoding("SHIFT-JIS").GetString(dat);
 
-                // サーバー相手に送り返す
-                Byte[] send =
-                    System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
-                    recvs[(int)RECV.SER] + ","
-                    + sUID+","
-                    + iCopyPasteCount);
-                client.Send(send, send.Length, remoteIP,SERVER_PORT);
+                // コンマで分解
+                string[] recvs = recv.Split(new char[] { ',' });
+
+                // 呼び出しか確認
+                if ((recvs[0] == "call") && (recvs.Length == (int)RECV.MAX))
+                {
+                    // 保存先パスを受け取る
+                    sSaveFolder = recvs[(int)RECV.SER];
+
+                    // サーバー相手に送り返す
+                    Byte[] send =
+                        System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                        recvs[(int)RECV.SER] + ","
+                        + sUID + ","
+                        + iCopyPasteCount);
+                    client.Send(send, send.Length, remoteIP, SERVER_PORT);
+                }
+
+                // 非同期開始
+                client.BeginReceive(ReceiveCallback, client);
             }
-
-            // 非同期開始
-            client.BeginReceive(ReceiveCallback, client);
+            catch (Exception ee)
+            {
+                Console.WriteLine(ee.ToString());
+            }
         }
 
         /** ボタンが押された*/
@@ -136,7 +142,7 @@ namespace 試験登録
             // サーバーに接続を伝える
             Byte[] send =
                 System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
-                "-," + sUID + ",-");
+                "ping," + sUID + ",-");
             client.Send(send, send.Length, "255.255.255.255", SERVER_PORT);
 
             // メッセージ

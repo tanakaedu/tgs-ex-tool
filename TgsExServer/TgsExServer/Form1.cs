@@ -70,9 +70,6 @@ namespace TgsExServer
             AnchorStyles.Left
                         };
 
-        /** メッセージ用フォーム*/
-        MessageForm messageForm = null;
-
         /** TCP通信用クラス*/
         TcpServer tcpServer = null;
 
@@ -371,16 +368,16 @@ namespace TgsExServer
                     // 呼び出し以外の時はエラー
                     if (recvDatas[0][0] != "call")
                     {
-                        messageForm.sMes += recvDatas[0][3] + " : ";
+                        textBox2.Text += recvDatas[0][3] + " : ";
                         for (int i = 0; i < recvDatas[0].Length; i++)
                         {
                             if (i > 0)
                             {
-                                messageForm.sMes += ",";
+                                textBox2.Text += ",";
                             }
-                            messageForm.sMes += recvDatas[0][i];
+                            textBox2.Text += recvDatas[0][i];
                         }
-                        messageForm.sMes += "\r\n";
+                        textBox2.Text += "\r\n";
                     }
                 }
 
@@ -408,10 +405,6 @@ namespace TgsExServer
                 // 受信を開始
                 udp.BeginReceive(new AsyncCallback(ReceiveCallback), udp);
 
-                // メッセージ用フォーム表示
-                messageForm = new MessageForm();
-                messageForm.Show();
-
                 // ボタン変更
                 button1.Text = "再送";
 
@@ -421,7 +414,8 @@ namespace TgsExServer
                 // TCP開始
                 if (tcpServer == null)
                 {
-                    tcpServer = new TcpServer(textBox1.Text, textBox2);
+                    tcpServer = new TcpServer();
+                    tcpServer.StartServer(textBox2);
                 }
             }
 
@@ -433,7 +427,11 @@ namespace TgsExServer
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             // TCPを閉じる
-            tcpServer.closeTcpListener();
+            if (tcpServer != null)
+            {
+                tcpServer.closeTcpListener();
+                tcpServer = null;
+            }
         }
     }
 }

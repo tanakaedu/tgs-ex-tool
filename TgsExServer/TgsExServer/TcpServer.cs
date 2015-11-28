@@ -24,42 +24,65 @@ namespace TgsExServer
         TcpListener listener;
         // ループ
         bool isLoop = true;
-        // 保存先フォルダのルート
-        public string saveRoot = "";
-
-        /** コンストラクタ*/
-        public TcpServer(string saveDir, TextBox tb)
-        {
-            StartServer();
-            saveRoot = saveDir;
-            WaitConnect(tb);
-        }
+        TextBox textStatus = null;
 
         /**
          * サーバーを開始
          */
-        public void StartServer() {
+        public void StartServer(TextBox tb) {
+            textStatus = tb;
+
             IPAddress ipAddr = IPAddress.Any;
             // TcpListener
             listener = new TcpListener(ipAddr, TCP_PORT);
 
             // 開始
             listener.Start();
+
+            // 接続開始
+            WaitConnect();
         }
 
         /**
          * 受信データからファイル名を取り出す
          */
-        string getFileName(MemoryStream mem, string ip)
+        string getFileName(MemoryStream mem)
         {
-            // 学籍番号/時間/シリアル番号
-            string uid = Form1.form1.getUIDWithIP(ip);
-
             // ファイル名のバイト数を取り出す
             int size = mem.ReadByte() & 0xff;
             byte[] bt = new byte[size];
             mem.Read(bt, 0, size);
             return Encoding.UTF8.GetString(bt);
+        }
+
+        /** パス文字列を生成
+         * 受け取った保存先 > 学籍番号 > 日時
+         * @return 空=無効 / パス文字列
+         */
+        string getSavePath(string ip)
+        {
+            if (Form1.form1.textBox1.Text.Length == 0)
+            {
+                return "";
+            }
+            string time = DateTime.Now.ToLongTimeString().Replace(':', '-');
+            string sUID = Form1.form1.getUIDWithIP(ip);
+            if (sUID.Length == 0)
+            {
+                textStatus.Text += "[" + ip + "]は未登録のIPです。\r\n";
+                return "";
+            }
+            string path = Form1.form1.textBox1.Text + sUID + @"\" + time;
+            for (int i = 0; i < 100; i++)
+            {
+                if (!Directory.Exists(path + "-" + i))
+                {
+                    return path + "-" + i;
+                }
+            }
+
+            // 1秒で100個以上は無効
+            return "";
         }
 
         /**
@@ -75,12 +98,13 @@ namespace TgsExServer
         /**
          * クライアントからの接続を待機する
          */
-        async void WaitConnect(TextBox textStatus)
+        async void WaitConnect()
         {
             while (isLoop)
             {
                 // 接続要求を受け入れる
                 Task<TcpClient> taskClient = listener.AcceptTcpClientAsync();
+                if (taskClient.Status == TaskStatus.Faulted) break;
                 TcpClient client = await taskClient;
                 string ip = ((System.Net.IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
                 textStatus.Text += "クライアント(" +ip
@@ -127,12 +151,25 @@ namespace TgsExServer
 
                 // 受信データを保存
                 ms.Position = 0;
-                string fname = saveRoot+getFileName(ms, ip);
+                string fname = getSavePath(ip);
+                if (fname.Length == 0)
+                {
+                    textStatus.Text += "保存先が無効です。\r\n";
+                    ms.Close();
+                    stream.Close();
+                    client.Close();
+                    continue;
+                }
+                if (!Directory.Exists(fname))
+                {
+                    Directory.CreateDirectory(fname);
+                }
+                fname += @"\"+getFileName(ms);
                 byte [] savedata = getData(ms);
                 File.WriteAllBytes(fname, savedata);
                 ms.Close();
 
-                // 末尾の\nを削除
+                // 出力履歴
                 textStatus.Text += fname+":"+savedata.Length + "bytes\r\n";
 
                 if (!disconnected)

@@ -44,7 +44,8 @@ namespace TgsExServer
         }
 
         /**
-         * 受信データからファイル名を取り出す
+         * 受信データからファイル名を取り出して、日付とシリアル番号を付加する
+         * ファイル名-日時-シリアル番号.拡張子
          */
         string getFileName(MemoryStream mem)
         {
@@ -55,36 +56,29 @@ namespace TgsExServer
             return Encoding.UTF8.GetString(bt);
         }
 
-        /** パス文字列を生成
-         * 受け取った保存先 > 学籍番号 > 日時
+        /** パス文字列を生成。フォルダーがない場合は作成する
+         * 受け取った保存先 > 学籍番号
          * @param string ip 送信先のIPアドレス
-         * @param string fname ファイル名
          * @return 空=無効 / パス文字列。最後に\を付けてある
          */
-        string getSavePath(string ip, string fname)
+        string getSavePath(string ip)
         {
             if (Form1.form1.textBox1.Text.Length == 0)
             {
                 return "";
             }
-            string time = DateTime.Now.ToLongTimeString().Replace(':', '-');
             string sUID = Form1.form1.getUIDWithIP(ip);
             if (sUID.Length == 0)
             {
                 textStatus.Text += "[" + ip + "]は未登録のIPです。\r\n";
                 return "";
             }
-            string path = Form1.form1.textBox1.Text + sUID + @"\" + time;
-            for (int i = 0; i < 100; i++)
+            string path = Form1.form1.textBox1.Text + sUID;
+            if (!Directory.Exists(path))
             {
-                if (!File.Exists(path + "-" + i + @"\" + fname))
-                {
-                    return path + "-" + i + @"\";
-                }
+                Directory.CreateDirectory(path);
             }
-
-            // 1秒で100個以上は無効
-            return "";
+            return path+@"\";
         }
 
         /**
@@ -156,8 +150,7 @@ namespace TgsExServer
 
                     // 受信データを保存
                     ms.Position = 0;
-                    string fname = getFileName(ms);
-                    string savepath = getSavePath(ip, fname);
+                    string savepath = getSavePath(ip);
                     if (savepath.Length == 0)
                     {
                         textStatus.Text += "保存先が無効です。\r\n";
@@ -166,16 +159,35 @@ namespace TgsExServer
                         client.Close();
                         continue;
                     }
-                    if (!Directory.Exists(savepath))
-                    {
-                        Directory.CreateDirectory(savepath);
-                    }
+                    string fnameext = getFileName(ms);
                     byte[] savedata = getData(ms);
-                    File.WriteAllBytes(savepath+fname, savedata);
+
+                    // ファイル名を生成
+                    string path = "";
+                    for (int i = 0; i < 100; i++)
+                    {
+                        string temp = makeSavePath(savepath, fnameext, i);
+                        if (!File.Exists(temp))
+                        {
+                            path = temp;
+                            break;
+                        }
+                    }
+                    if (path.Length == 0)
+                    {
+                        textStatus.Text += "保存数が異常です。" + path + "," + fnameext + "\r\n";
+                        ms.Close();
+                        stream.Close();
+                        client.Close();
+                        continue;
+                    }
+
+                    // 保存実行
+                    File.WriteAllBytes(path, savedata);
                     ms.Close();
 
                     // 出力履歴
-                    textStatus.Text += savepath+fname + ":" + savedata.Length + "bytes\r\n";
+                    textStatus.Text += path + ":" + savedata.Length + "bytes\r\n";
 
                     if (!disconnected)
                     {
@@ -202,6 +214,19 @@ namespace TgsExServer
             }
             // リスナを閉じる
             closeTcpListener();
+        }
+
+        /**
+         * フォルダー、ファイル名、シリアル番号を指定して、保存ファイル名を作成して返す
+         * @param string dir 保存先のフォルダー
+         * @param string fname ファイル名
+         * @param int ser シリアル番号
+         */
+        string makeSavePath(string dir, string fnameext, int ser)
+        {
+            string fname = Path.GetFileNameWithoutExtension(fnameext);
+            string time = DateTime.Now.ToLongTimeString().Replace(':', '-');
+            return dir + fname + "-" + time + "-" + ser + Path.GetExtension(fnameext);
         }
 
         /** リスナーを閉じる*/

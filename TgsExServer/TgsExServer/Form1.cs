@@ -15,6 +15,7 @@ namespace TgsExServer
     public partial class Form1 : Form
     {
         public static Form1 form1;
+        const string VERSION = "Ver20151201";
 
         // デバッグデータの利用
         const bool USE_DEBUG = false;
@@ -316,7 +317,7 @@ namespace TgsExServer
             Ser++;
             try
             {
-                Text = "試験サーバー(" + Ser + ")";
+                Text = "試験サーバー(" + Ser + ")"+VERSION;
             }
             catch (Exception ee)
             {

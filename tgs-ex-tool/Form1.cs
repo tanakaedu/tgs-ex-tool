@@ -74,6 +74,12 @@ namespace 試験登録
                 Application.Exit();
                 return;
             }
+
+            // 設定読み込み
+            string conf = Path.GetDirectoryName(Application.ExecutablePath) + @"\config.dat";
+            if (File.Exists(conf)) {
+                remoteIP = File.ReadAllText(conf).Trim();
+            }
         }
 
         /** 受信データのインデックス*/

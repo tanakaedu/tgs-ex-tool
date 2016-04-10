@@ -8,7 +8,7 @@ namespace Am1\Attend;
 class AttendTable extends \Illuminate\Database\Eloquent\Model
 {
     /** テーブル名を定義*/
-    protected $table = TALBE_ATTEND;
+    protected $table = TABLE_ATTEND;
     /** タイムスタンプを無効化する*/
     public $timestamps = false;
 }

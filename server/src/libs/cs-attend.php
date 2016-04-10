@@ -143,7 +143,44 @@ class CsAttend
         return self::fromDB($class->localserver);
     }
 
-    public function entryAttendProc($uid, $card)
+    /**
+     * 指定の学籍番号とカード番号で出席を登録
+     * 見つからない場合はfalse.
+     */
+    public static function entryAttendProc($uid, $card)
     {
+        $class = self::getClassData();
+        if ($class === false) {
+            return false;
+        }
+
+        // 同一日のデータがあるかを確認
+        $select = "select id from am1_att_attend where";
+        $select .= " uid=? and";
+        $select .= " classid=? and";
+        $select .= " date(enttime)=date(now())";
+        $attend = Capsule::select(
+            $select,
+            [
+                $uid,
+                $card
+            ]
+        );
+
+        // 既存のデータがある場合は、カード番号を上書き
+        if (count($attend) > 0) {
+            $update = AttendTable::where('id', '=', $attend[0]->id)->take(1)->get()[0];
+            $update->card = $card;
+            $update->save();
+        }
+        else {
+            // 既存データがないので新規登録
+            $newattend = new AttendTable;
+            $newattend->uid = $uid;
+            $newattend->classid = $class->id;
+            $newattend->card = $card;
+            $newattend->enttime = date('Y-n-j H:i:s');
+            $newattend->save();
+        }
     }
 }

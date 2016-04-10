@@ -3,17 +3,52 @@
 namespace PostTest;
 
 use Am1\Attend\CsAttend;
+use Am1\Attend\AttendTable;
 use Am1\Attend\ClassTable;
 use Am1\Attend\CheckParameters;
 
 class DbTest extends \PHPUnit_Framework_TestCase
 {
     /**
+     * @param number $wn date("w")の値。0(日曜日)-6(土曜日)
+     *
+     * @return DB用にエンコードした曜日文字列
+     */
+    private function getWeekChar($wn)
+    {
+        $wk = ['日', '月', '火', '水', '木', '金', '土'];
+
+        return CsAttend::toDB($wk[$wn]);
+    }
+
+    /**
+     * テスト用のクラスデータを出席受付中にする.
+     */
+    private function enableTestData()
+    {
+        // テスト用に最初のデータは必ず今の動作にする
+        $data = ClassTable::find(1);
+        $data->week = $this->getWeekChar(date('w'));
+        $data->sttime = date('H:i:s');
+        $data->offminutes = 1;
+        $data->save();
+    }
+
+    /**
+     * テストクラスの出席を削除.
+     */
+    private function removeTestAttend()
+    {
+        AttendTable::where('classid', '=', 1)->delete();
+    }
+
+    /**
      * @group target
      * 全角数値を半角数値に変換する処理のテスト
      */
-    public function testZen2Han() {
-        $this->assertEquals("0a1b2c3d4e5f6g789aあ9876543210", CheckParameters::Zen2Han("０a１b２c３d４e５f６g７８９aあ9876543210"));
+    public function testZen2Han()
+    {
+        $this->assertEquals('0a1b2c3d4e5f6g789aあ9876543210', CheckParameters::Zen2Han('０a１b２c３d４e５f６g７８９aあ9876543210'));
     }
 
     /**
@@ -23,6 +58,8 @@ class DbTest extends \PHPUnit_Framework_TestCase
     public function testEntry()
     {
         $this->enableTestData();
+        $this->removeTestAttend();
+        $beforeCount = AttendTable::where('classid', '=', 1)->count();
 
         $send = array(
             'uid' => '21531000',
@@ -31,9 +68,75 @@ class DbTest extends \PHPUnit_Framework_TestCase
         $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
         $json = json_decode($res['response']);
 
-        $this->assertRegExp("/200/", $res['http_response_header'][0]);
+        $this->assertRegExp('/200/', $res['http_response_header'][0]);
         $this->assertEquals('ok', $json->message);
         $this->assertEquals('127.0.0.1', $json->server_ip);
+        $this->assertEquals($beforeCount + 1, AttendTable::where('classid', '=', 1)->count());
+    }
+
+    /**
+     * @depend testEntry
+     * 同一日の出席は更新しない関数をじかに呼び出す
+     */
+    public function testEntryBlockInner()
+    {
+        $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $this->assertEquals(999, $att->card);
+        $beforeCount = AttendTable::where('classid', '=', 1)->count();
+        CsAttend::entryAttendProc('21531000', 1);
+
+        $this->assertEquals($beforeCount, AttendTable::where('classid', '=', 1)->count());
+        $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $this->assertEquals(1, $att->card);
+    }
+
+    /**
+     * @group target
+     * @depend testEntry
+     * 同一日の出席は更新しない
+     */
+    public function testEntryBlock()
+    {
+        $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $this->assertEquals(999, $att->card);
+
+        $beforeCount = AttendTable::where('classid', '=', 1)->count();
+        $send = array(
+            'uid' => '21531000',
+            'card' => '1',
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $json = json_decode($res['response']);
+
+        $this->assertEquals($beforeCount, AttendTable::where('classid', '=', 1)->count());
+        $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $this->assertEquals(1, $att->card);
+    }
+
+    /**
+     * @group target
+     * @depend testEntry
+     * 他の日の出席に対しては、データを追加
+     */
+    public function testEntryAnotherDate()
+    {
+        // 登録済みのデータの日付を変更
+        $test = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $test->enttime = date('Y-m-d H:i:s', time()-60*60*24*7);
+        $test->save();
+
+        // 登録
+        $beforeCount = AttendTable::where('classid', '=', 1)->count();
+        $send = array(
+            'uid' => '21531000',
+            'card' => '2',
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $json = json_decode($res['response']);
+
+        $this->assertEquals($beforeCount+1, AttendTable::where('classid', '=', 1)->count());
+        $att = AttendTable::where('classid', '=', 1)->get()[1];
+        $this->assertEquals(2, $att->card);
     }
 
     /**
@@ -60,31 +163,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
             echo CsAttend::fromDB($class[$i]->semester)."\n";
         }
     }
-
-    /**
-     * @param number $wn date("w")の値。0(日曜日)-6(土曜日)
-     *
-     * @return DB用にエンコードした曜日文字列
-     */
-    private function getWeekChar($wn)
-    {
-        $wk = ['日', '月', '火', '水', '木', '金', '土'];
-
-        return CsAttend::toDB($wk[$wn]);
-    }
-
-    /**
-     * テスト用のクラスデータを出席受付中にする
-     */
-    private function enableTestData() {
-        // テスト用に最初のデータは必ず今の動作にする
-        $data = ClassTable::find(1);
-        $data->week = $this->getWeekChar(date('w'));
-        $data->sttime = date('H:i:s');
-        $data->offminutes = 1;
-        $data->save();
-    }
-
 
     /*
      * 登録済みのUIDで同じcardに登録

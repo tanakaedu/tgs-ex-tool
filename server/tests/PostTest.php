@@ -43,7 +43,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * 全角数値を半角数値に変換する処理のテスト
      */
     public function testZen2Han()
@@ -93,12 +92,17 @@ class DbTest extends \PHPUnit_Framework_TestCase
     /**
      * @group target
      * @depend testEntry
-     * 同一日の出席は更新しない
+     * 同一日の出席はカードのみ更新。
      */
     public function testEntryBlock()
     {
         $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
         $this->assertEquals(999, $att->card);
+
+        // 登録済みのデータの日付を変更
+        $test = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
+        $test->enttime = date('Y-m-d H:i:s', time()-60*60);
+        $test->save();
 
         $beforeCount = AttendTable::where('classid', '=', 1)->count();
         $send = array(
@@ -110,7 +114,8 @@ class DbTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals($beforeCount, AttendTable::where('classid', '=', 1)->count());
         $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
-        $this->assertEquals(1, $att->card);
+        $this->assertEquals(1, $att->card, 'カード番号の変更をチェック');
+        $this->assertNotEquals(date('Y-m-d H:i:s'), $att->enttime, '時間が変更されていないチェック');
     }
 
     /**
@@ -164,21 +169,22 @@ class DbTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    /*
-     * 登録済みのUIDで同じcardに登録
-     * 変更なし
-     */
-
-    /*
-     * 登録済みのUIDで、別のcardに登録
-     * カード番号を変更
-     * カードの重複チェックは省く
-     */
-
-    /*
+    /**
+     * @group target
      * 不正な学籍番号
      * エラー
      */
+    public function testUIDError() {
+        $send = array(
+            'uid' => 'abcdef',
+            'card' => '100',
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $result = CheckParameters::checkError($res['http_response_header']);
+
+        $this->assertEquals('ok', $result);
+    }
+
 
     /*
      * 不正なカード番号
@@ -201,7 +207,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
         $data_url = http_build_query($sendarray);
         $data_len = strlen($data_url);
 
-        $res = file_get_contents(
+        $res = @file_get_contents(
             $url,
             false,
             stream_context_create(array(

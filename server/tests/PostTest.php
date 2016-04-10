@@ -182,19 +182,70 @@ class DbTest extends \PHPUnit_Framework_TestCase
         $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
         $result = CheckParameters::checkError($res['http_response_header']);
 
-        $this->assertEquals('ok', $result);
+        $this->assertEquals('学籍番号が違います。', $result);
     }
 
-
-    /*
+    /**
+     * @group target
      * 不正なカード番号
      * エラー
      */
+    public function testCardError() {
+         $send = array(
+             'uid' => '21531999',
+             'card' => 'abc',
+         );
+         $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+         $result = CheckParameters::checkError($res['http_response_header']);
 
-    /*
+         $this->assertEquals('カード番号が不正です。', $result);
+
+         $send = array(
+             'uid' => '21531999',
+             'card' => '-1',
+         );
+         $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+         $result = CheckParameters::checkError($res['http_response_header']);
+
+         $this->assertEquals('カード番号が不正です。', $result);
+
+         $send = array(
+             'uid' => '21531999',
+             'card' => '1000',
+         );
+         $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+         $result = CheckParameters::checkError($res['http_response_header']);
+
+         $this->assertEquals('カード番号が不正です。', $result);
+     }
+
+
+    /**
+     * @group target
      * 要素不足
      * エラー
      */
+    public function testInvalidParameters() {
+        $send = array(
+            'card' => '1000'
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $result = CheckParameters::checkError($res['http_response_header']);
+        $this->assertEquals('パラメータ不足です。', $result, 'uid不足');
+
+        $send = array(
+            'uid' => '21531999'
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $result = CheckParameters::checkError($res['http_response_header']);
+        $this->assertEquals('パラメータ不足です。', $result, 'uid不足');
+
+        $send = array(
+        );
+        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $result = CheckParameters::checkError($res['http_response_header']);
+        $this->assertEquals('パラメータ不足です。', $result, 'uid不足');
+    }
 
     /**
      * @param string $url       送信先のURL

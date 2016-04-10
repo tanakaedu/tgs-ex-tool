@@ -12,10 +12,12 @@ class CheckParameters
     const ERROR_NO_CLASS = 0;
     const ERROR_INVALID_UID = 1;
     const ERROR_INVALID_CARD = 2;
+    const ERROR_INVALID_PARAMETERS = 3;
     private static $ERRORS = [
         '出席の受け付け時間ではありません。',
         '学籍番号が違います。',
-        'カード番号が不正です。'
+        'カード番号が不正です。',
+        'パラメータ不足です。'
     ];
 
     /**
@@ -46,9 +48,16 @@ class CheckParameters
      */
     public function __invoke($request, $response, $next)
     {
+        // パラメータ不足チェック
+        if (    !array_key_exists('uid', $_POST)
+            ||  !array_key_exists('card', $_POST)) {
+            return $response->withStatus(400)
+                ->withHeader('X-Status-Reason', self::ERROR_INVALID_PARAMETERS);
+        }
+
         // クラスの特定
         $class = CsAttend::getClassData();
-        if ($class == false) {
+        if ($class === false) {
             // クラスが見つからない
             return $response->withStatus(400)
                 ->withHeader('X-Status-Reason', self::ERROR_NO_CLASS);

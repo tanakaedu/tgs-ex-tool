@@ -8,7 +8,7 @@ use Am1\Attend\CsAttend;
 // uid=学籍番号
 // card=IPの下3桁
 // 結果はJSONで返信する(message=文字列/server_ip=ローカルサーバーのIP/name=学生名)
-$app->post('/attend', function ($request, $response, $args) {
+$app->post('/', function ($request, $response, $args) {
     // 登録
     CsAttend::entryAttendProc($_POST['uid'], $_POST['card']);
     // 名前の確認。失敗時はnameに空文字を返す

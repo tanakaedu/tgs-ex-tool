@@ -51,7 +51,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * 出席登録テスト
      */
     public function testEntry()
@@ -70,6 +69,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
         $this->assertRegExp('/200/', $res['http_response_header'][0]);
         $this->assertEquals('ok', $json->message);
         $this->assertEquals('127.0.0.1', $json->server_ip);
+        $this->assertEquals('', $json->name);
         $this->assertEquals($beforeCount + 1, AttendTable::where('classid', '=', 1)->count());
     }
 
@@ -90,7 +90,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * @depend testEntry
      * 同一日の出席はカードのみ更新。
      */
@@ -119,7 +118,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * @depend testEntry
      * 他の日の出席に対しては、データを追加
      */
@@ -170,7 +168,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * 不正な学籍番号
      * エラー
      */
@@ -186,7 +183,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @group target
      * 不正なカード番号
      * エラー
      */
@@ -221,7 +217,6 @@ class DbTest extends \PHPUnit_Framework_TestCase
 
 
     /**
-     * @group target
      * 要素不足
      * エラー
      */

@@ -1,4 +1,10 @@
 <?php
+
+/*
+foreach($_SERVER as $k => $v) {
+    echo "$k = $v <br/>";
+}*/
+
 if (PHP_SAPI == 'cli-server') {
     // To help the built-in PHP dev server, check if the request was actually for
     // something which should probably be served as a static file
@@ -10,7 +16,7 @@ if (PHP_SAPI == 'cli-server') {
     require __DIR__ . '/../src/bootstrap-mac.php';
 }
 else {
-    require __DIR__ . '/../src/bootstrap.php';
+    require __DIR__ . '/../src/bootstrap-sakura.php';
 }
 
 session_start();

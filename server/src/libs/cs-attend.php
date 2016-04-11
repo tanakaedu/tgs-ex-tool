@@ -163,7 +163,7 @@ class CsAttend
             $select,
             [
                 $uid,
-                $card
+                $class->id
             ]
         );
 

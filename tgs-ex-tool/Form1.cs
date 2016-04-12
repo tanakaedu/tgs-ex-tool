@@ -11,6 +11,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using Newtonsoft.Json;
 
 namespace 試験登録
 {
@@ -39,6 +40,8 @@ namespace 試験登録
             "カード番号が不正です。",
             "パラメータ不足です。"
         };
+        /** 出席サーバーからのレスポンス*/
+        private AttendResponse attendResponse = null;
 
 
         /** イベントハンドら*/
@@ -139,8 +142,10 @@ namespace 試験登録
 
         /**
          * 出席サーバーに登録してローカルサーバーのIPと学生の名前を受け取る
+         * @param string uid 登録する学籍番号。半角に変換済み
+         * @return AttendResponse null=エラー / 出席サーバーからの戻り値
          */
-        private void postAttend()
+        private AttendResponse postAttend(string uid)
         {
             // 出席サーバーに登録(http://dobon.net/vb/dotnet/internet/webrequestpost.html)
             System.Text.Encoding enc = System.Text.Encoding.GetEncoding("utf-8");
@@ -150,7 +155,15 @@ namespace 試験登録
             // ホスト名からIPアドレスを取得する
             IPAddress[] adrList = Dns.GetHostAddresses(hostname);
 
-            string postData = "uid=" + textUID.Text + "&card=" + adrList[0].ToString();
+            string postData = "uid=" + uid + "&card=";
+            for (int i = 0; i < adrList.Length; i++)
+            {
+                if (!adrList[i].IsIPv6LinkLocal)
+                {
+                    string[] sp = adrList[i].MapToIPv4().ToString().Split(new Char [] {'.'});
+                    postData += sp[sp.Length-1];
+                }
+            }
 
 
             //バイト型配列に変換
@@ -184,9 +197,9 @@ namespace 試験登録
                 //閉じる
                 sr.Close();
 
-                MessageBox.Show(resp);
-
                 // デシリアライズ(http://qiita.com/ta-yamaoka/items/a7ff1d9651310ade4e76)
+                AttendResponse respjson = JsonConvert.DeserializeObject<AttendResponse>(resp);
+                return respjson;
             }
             catch (WebException we)
             {
@@ -200,6 +213,8 @@ namespace 試験登録
             {
                 MessageBox.Show("エラー" + e.ToString());
             }
+
+            return null;
         }
 
         /** ボタンが押された*/
@@ -209,9 +224,11 @@ namespace 試験登録
             sUID = convZen2Han(textUID.Text);
 
             // 出席サーバーに登録
-            postAttend();
-
-            return;
+            attendResponse = postAttend(sUID);
+            if (attendResponse == null)
+            {
+                return;
+            }
 
             // 受信の開始
             if (client == null)
@@ -230,7 +247,12 @@ namespace 試験登録
             client.Send(send, send.Length, "255.255.255.255", SERVER_PORT);
 
             // メッセージ
-            MessageBox.Show(sUID + "：登録しました。");
+            string ent = sUID;
+            if (attendResponse.name.Length > 0)
+            {
+                ent += "(" + attendResponse.name + ")";
+            }
+            MessageBox.Show("出席を登録しました：" + ent);
 
             // フォームを最小化
             this.WindowState = FormWindowState.Minimized;
@@ -402,4 +424,17 @@ namespace 試験登録
             }
         }
     }
+
+    [JsonObject("user")]
+    public class AttendResponse
+    {
+        [JsonProperty("message")]
+        public string message { get; set; }
+        [JsonProperty("name")]
+        public string name { get; set; }
+        [JsonProperty("server_ip")]
+        public string serverIP { get; set; }
+    }
+
+
 }

@@ -53,8 +53,10 @@ class CsAttend
 
         $select = 'select * from am1_att_class where semester=?';
         $select .= ' and week=?';
-        $select .= ' and sttime<=now()';
-        $select .= ' and sttime>=time(timestampadd(MINUTE, -offminutes, now()))';
+        $select .= ' and ((sttime<=now()';
+        $select .= ' and sttime>=time(timestampadd(MINUTE, -offminutes, now())))';
+        $select .= ' or (started<=now()';
+        $select .= ' and started>=timestampadd(MINUTE, -offminutes, now())))';
 
         // 前期後期の判定(4月から8月が前期)
         $now = getdate();

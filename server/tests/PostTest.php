@@ -35,6 +35,17 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * スターテッドの方を使って時間を開始
+     */
+    private function enableTestDataWithStarted() {
+        $data = ClassTable::find(1);
+        $data->week = $this->getWeekChar(date('w'));
+        $data->started = date('Y-m-d H:i:s', time()-10);
+        $data->offminutes = 100;
+        $data->save();
+    }
+
+    /**
      * テストクラスの出席を削除.
      */
     private function removeTestAttend()
@@ -51,11 +62,12 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @group target
      * 出席登録テスト
      */
     public function testEntry()
     {
-        $this->enableTestData();
+        $this->enableTestDataWithStarted();
         $this->removeTestAttend();
         $beforeCount = AttendTable::where('classid', '=', 1)->count();
 
@@ -63,7 +75,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
             'uid' => '21531000',
             'card' => '999',
         );
-        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $res = $this->postUrl('http://0.0.0.0:8080/', $send);
         $json = json_decode($res['response']);
 
         $this->assertRegExp('/200/', $res['http_response_header'][0]);
@@ -90,6 +102,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @group target
      * @depend testEntry
      * 同一日の出席はカードのみ更新。
      */
@@ -98,9 +111,9 @@ class DbTest extends \PHPUnit_Framework_TestCase
         $att = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
         $this->assertEquals(999, $att->card);
 
-        // 登録済みのデータの日付を変更
+        // 少し時間をずらす
         $test = AttendTable::where('classid', '=', 1)->take(1)->get()[0];
-        $test->enttime = date('Y-m-d H:i:s', time()-60*60);
+        $test->enttime = date('Y-m-d H:i:s', time()-1);
         $test->save();
 
         $beforeCount = AttendTable::where('classid', '=', 1)->count();
@@ -108,7 +121,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
             'uid' => '21531000',
             'card' => '1',
         );
-        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $res = $this->postUrl('http://0.0.0.0:8080/', $send);
         $json = json_decode($res['response']);
 
         $this->assertEquals($beforeCount, AttendTable::where('classid', '=', 1)->count());
@@ -118,6 +131,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
+     * @group target
      * @depend testEntry
      * 他の日の出席に対しては、データを追加
      */
@@ -134,7 +148,7 @@ class DbTest extends \PHPUnit_Framework_TestCase
             'uid' => '21531000',
             'card' => '2',
         );
-        $res = $this->postUrl('http://0.0.0.0:8080/attend', $send);
+        $res = $this->postUrl('http://0.0.0.0:8080/', $send);
         $json = json_decode($res['response']);
 
         $this->assertEquals($beforeCount+1, AttendTable::where('classid', '=', 1)->count());

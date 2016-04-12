@@ -32,6 +32,14 @@ namespace 試験登録
         bool isClose = false;
         /** コピーペースト回数*/
         int iCopyPasteCount = 0;
+        /** 出席サーバーエラー文字列(check-parameter.php)*/
+        string[] ATTEND_ERRORS = {
+            "出席の受け付け時間ではありません。",
+            "学籍番号が違います。",
+            "カード番号が不正です。",
+            "パラメータ不足です。"
+        };
+
 
         /** イベントハンドら*/
         private MyClipboardViewer viewer;
@@ -129,11 +137,81 @@ namespace 試験登録
             }
         }
 
+        /**
+         * 出席サーバーに登録してローカルサーバーのIPと学生の名前を受け取る
+         */
+        private void postAttend()
+        {
+            // 出席サーバーに登録(http://dobon.net/vb/dotnet/internet/webrequestpost.html)
+            System.Text.Encoding enc = System.Text.Encoding.GetEncoding("utf-8");
+
+            // ホスト名を取得する
+            string hostname = Dns.GetHostName();
+            // ホスト名からIPアドレスを取得する
+            IPAddress[] adrList = Dns.GetHostAddresses(hostname);
+
+            string postData = "uid=" + textUID.Text + "&card=" + adrList[0].ToString();
+
+
+            //バイト型配列に変換
+            byte[] postDataBytes = System.Text.Encoding.ASCII.GetBytes(postData);
+
+            //WebRequestの作成
+            System.Net.WebRequest req =
+                System.Net.WebRequest.Create(Defines.ATTEND_URL);
+            //メソッドにPOSTを指定
+            req.Method = "POST";
+            //ContentTypeを"application/x-www-form-urlencoded"にする
+            req.ContentType = "application/x-www-form-urlencoded";
+            //POST送信するデータの長さを指定
+            req.ContentLength = postDataBytes.Length;
+
+            try
+            {
+                //データをPOST送信するためのStreamを取得
+                System.IO.Stream reqStream = req.GetRequestStream();
+                //送信するデータを書き込む
+                reqStream.Write(postDataBytes, 0, postDataBytes.Length);
+                reqStream.Close();
+
+                //サーバーからの応答を受信するためのWebResponseを取得
+                System.Net.WebResponse res = req.GetResponse();
+                //応答データを受信するためのStreamを取得
+                System.IO.Stream resStream = res.GetResponseStream();
+                //受信して表示
+                System.IO.StreamReader sr = new System.IO.StreamReader(resStream, enc);
+                string resp = sr.ReadToEnd();
+                //閉じる
+                sr.Close();
+
+                MessageBox.Show(resp);
+
+                // デシリアライズ(http://qiita.com/ta-yamaoka/items/a7ff1d9651310ade4e76)
+            }
+            catch (WebException we)
+            {
+                //HttpWebResponseを取得
+                System.Net.HttpWebResponse errres =
+                    (System.Net.HttpWebResponse)we.Response;
+                //応答したURIを表示する
+                MessageBox.Show(ATTEND_ERRORS[int.Parse(errres.Headers["X-Status-Reason"].ToString())]);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("エラー" + e.ToString());
+            }
+        }
+
         /** ボタンが押された*/
         private void btnEntry_Click(object sender, EventArgs e)
         {
             // 全角だったら半角に変換して記録
             sUID = convZen2Han(textUID.Text);
+
+            // 出席サーバーに登録
+            postAttend();
+
+            return;
 
             // 受信の開始
             if (client == null)

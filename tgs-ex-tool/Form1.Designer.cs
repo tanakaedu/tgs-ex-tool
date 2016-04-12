@@ -67,7 +67,7 @@
             this.btnEntry.Name = "btnEntry";
             this.btnEntry.Size = new System.Drawing.Size(315, 40);
             this.btnEntry.TabIndex = 2;
-            this.btnEntry.Text = "試験出席登録";
+            this.btnEntry.Text = "出席登録";
             this.btnEntry.UseVisualStyleBackColor = true;
             this.btnEntry.Click += new System.EventHandler(this.btnEntry_Click);
             // 
@@ -96,7 +96,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(6, 5, 6, 5);
             this.Name = "Form1";
-            this.Text = "試験登録";
+            this.Text = "出席登録(160412)";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);

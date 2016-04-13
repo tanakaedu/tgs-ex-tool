@@ -37,22 +37,25 @@ namespace 試験登録
         }
 
         /** 送信処理*/
-        public static void Send(string ip)
+        public static bool Send(string ip)
         {
             // データがあれば送信
             if (lists.Count > 0) {
                 SendDataItem item = lists[0];
                 if (!tcpClient.SendTcp(ip, "scr.png", item.scrShot))
                 {
-                    return;
+                    return false;
                 }
                 if (!tcpClient.SendTcp(ip, "copy.txt", item.copyText))
                 {
-                    return;
+                    return false;
                 }
                 // 成功したので、最初のデータを削除
                 lists.RemoveAt(0);
+                return true;
             }
+
+            return false;
         }
     }
 

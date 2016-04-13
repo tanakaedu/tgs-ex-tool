@@ -12,6 +12,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace 試験登録
 {
@@ -43,6 +44,12 @@ namespace 試験登録
         /** 出席サーバーからのレスポンス*/
         private AttendResponse attendResponse = null;
 
+        /** ストップウォッチ*/
+        private Stopwatch stopwatch = new Stopwatch();
+        /** 前回の計測時間*/
+        private long lLastSendTime = 0;
+        /** 送信間隔*/
+        private const long SEND_INTERVAL = 60000;
 
         /** イベントハンドら*/
         private MyClipboardViewer viewer;
@@ -56,6 +63,8 @@ namespace 試験登録
             // イベントハンドラの登録
             viewer.ClipboardHandler += this.OnClipBoardChanged;
             InitializeComponent();
+            stopwatch.Start();
+            lLastSendTime = stopwatch.ElapsedMilliseconds;
         }
 
         // クリップボードにテキストがコピーされると呼び出される
@@ -101,6 +110,28 @@ namespace 試験登録
             MAX
         }
 
+        /** サーバーに情報を送信*/
+        private void SendStatus(string savepath)
+        {
+            if (    (remoteIP.Length == 0)
+                ||  (sUID.Length == 0)
+                ||  (client == null)
+                || ((stopwatch.ElapsedMilliseconds - lLastSendTime) <= SEND_INTERVAL))
+            {
+                return;
+            }
+
+            Byte[] send =
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                 savepath + ","
+                + sUID + ","
+                + iCopyPasteCount);
+            client.Send(send, send.Length, remoteIP, SERVER_PORT);
+
+            // 送信時間を更新
+            lLastSendTime = stopwatch.ElapsedMilliseconds;
+        }
+
         /** 受信コールバック*/
         public void ReceiveCallback(IAsyncResult ar)
         {
@@ -123,12 +154,7 @@ namespace 試験登録
                     sSaveFolder = recvs[(int)RECV.SER];
 
                     // サーバー相手に送り返す
-                    Byte[] send =
-                        System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
-                        recvs[(int)RECV.SER] + ","
-                        + sUID + ","
-                        + iCopyPasteCount);
-                    client.Send(send, send.Length, remoteIP, SERVER_PORT);
+                    SendStatus(recvs[(int)RECV.SER]);
                 }
 
                 // 非同期開始
@@ -229,6 +255,7 @@ namespace 試験登録
             {
                 return;
             }
+            remoteIP = attendResponse.serverIP;
 
             // 受信の開始
             if (client == null)
@@ -420,9 +447,16 @@ namespace 試験登録
         {
             if ((sUID.Length > 0) && (client != null))
             {
-                SendData.Send(remoteIP);
+                if (SendData.Send(remoteIP))
+                {
+                    // すぐにステータスを送信
+                    lLastSendTime = stopwatch.ElapsedMilliseconds-SEND_INTERVAL;
+                }
             }
+
+            SendStatus(sSaveFolder);
         }
+
     }
 
     [JsonObject("user")]

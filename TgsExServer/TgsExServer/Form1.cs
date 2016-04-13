@@ -15,7 +15,7 @@ namespace TgsExServer
     public partial class Form1 : Form
     {
         public static Form1 form1;
-        const string VERSION = "Ver20151201";
+        const string VERSION = "Ver20160413";
 
         // デバッグデータの利用
         const bool USE_DEBUG = false;

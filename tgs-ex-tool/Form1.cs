@@ -176,21 +176,22 @@ namespace 試験登録
             // 出席サーバーに登録(http://dobon.net/vb/dotnet/internet/webrequestpost.html)
             System.Text.Encoding enc = System.Text.Encoding.GetEncoding("utf-8");
 
-            // ホスト名を取得する
+            // ホスト名を取得する(http://techoh.net/get-ipv4-local-ip/)
             string hostname = Dns.GetHostName();
             // ホスト名からIPアドレスを取得する
             IPAddress[] adrList = Dns.GetHostAddresses(hostname);
+            IPHostEntry ipentry = Dns.GetHostEntry(Dns.GetHostName());
 
             string postData = "uid=" + uid + "&card=";
-            for (int i = 0; i < adrList.Length; i++)
+            foreach (IPAddress ip in ipentry.AddressList)
             {
-                if (!adrList[i].IsIPv6LinkLocal)
+                if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
                 {
-                    string[] sp = adrList[i].MapToIPv4().ToString().Split(new Char [] {'.'});
-                    postData += sp[sp.Length-1];
+                    string[] sepa = ip.ToString().Split(new char[] { '.' });
+                    postData += sepa[sepa.Length-1];
+                    break;
                 }
             }
-
 
             //バイト型配列に変換
             byte[] postDataBytes = System.Text.Encoding.ASCII.GetBytes(postData);

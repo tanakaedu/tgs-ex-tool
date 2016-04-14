@@ -11,6 +11,8 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace 試験登録
 {
@@ -39,7 +41,15 @@ namespace 試験登録
             "カード番号が不正です。",
             "パラメータ不足です。"
         };
+        /** 出席サーバーからのレスポンス*/
+        private AttendResponse attendResponse = null;
 
+        /** ストップウォッチ*/
+        private Stopwatch stopwatch = new Stopwatch();
+        /** 前回の計測時間*/
+        private long lLastSendTime = 0;
+        /** 送信間隔*/
+        private const long SEND_INTERVAL = 60000;
 
         /** イベントハンドら*/
         private MyClipboardViewer viewer;
@@ -53,6 +63,8 @@ namespace 試験登録
             // イベントハンドラの登録
             viewer.ClipboardHandler += this.OnClipBoardChanged;
             InitializeComponent();
+            stopwatch.Start();
+            lLastSendTime = stopwatch.ElapsedMilliseconds;
         }
 
         // クリップボードにテキストがコピーされると呼び出される
@@ -98,6 +110,28 @@ namespace 試験登録
             MAX
         }
 
+        /** サーバーに情報を送信*/
+        private void SendStatus(string savepath)
+        {
+            if (    (remoteIP.Length == 0)
+                ||  (sUID.Length == 0)
+                ||  (client == null)
+                || ((stopwatch.ElapsedMilliseconds - lLastSendTime) <= SEND_INTERVAL))
+            {
+                return;
+            }
+
+            Byte[] send =
+                System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
+                 savepath + ","
+                + sUID + ","
+                + iCopyPasteCount);
+            client.Send(send, send.Length, remoteIP, SERVER_PORT);
+
+            // 送信時間を更新
+            lLastSendTime = stopwatch.ElapsedMilliseconds;
+        }
+
         /** 受信コールバック*/
         public void ReceiveCallback(IAsyncResult ar)
         {
@@ -120,12 +154,7 @@ namespace 試験登録
                     sSaveFolder = recvs[(int)RECV.SER];
 
                     // サーバー相手に送り返す
-                    Byte[] send =
-                        System.Text.Encoding.GetEncoding("SHIFT-JIS").GetBytes(
-                        recvs[(int)RECV.SER] + ","
-                        + sUID + ","
-                        + iCopyPasteCount);
-                    client.Send(send, send.Length, remoteIP, SERVER_PORT);
+                    SendStatus(recvs[(int)RECV.SER]);
                 }
 
                 // 非同期開始
@@ -139,19 +168,30 @@ namespace 試験登録
 
         /**
          * 出席サーバーに登録してローカルサーバーのIPと学生の名前を受け取る
+         * @param string uid 登録する学籍番号。半角に変換済み
+         * @return AttendResponse null=エラー / 出席サーバーからの戻り値
          */
-        private void postAttend()
+        private AttendResponse postAttend(string uid)
         {
             // 出席サーバーに登録(http://dobon.net/vb/dotnet/internet/webrequestpost.html)
             System.Text.Encoding enc = System.Text.Encoding.GetEncoding("utf-8");
 
-            // ホスト名を取得する
+            // ホスト名を取得する(http://techoh.net/get-ipv4-local-ip/)
             string hostname = Dns.GetHostName();
             // ホスト名からIPアドレスを取得する
             IPAddress[] adrList = Dns.GetHostAddresses(hostname);
+            IPHostEntry ipentry = Dns.GetHostEntry(Dns.GetHostName());
 
-            string postData = "uid=" + textUID.Text + "&card=" + adrList[0].ToString();
-
+            string postData = "uid=" + uid + "&card=";
+            foreach (IPAddress ip in ipentry.AddressList)
+            {
+                if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    string[] sepa = ip.ToString().Split(new char[] { '.' });
+                    postData += sepa[sepa.Length-1];
+                    break;
+                }
+            }
 
             //バイト型配列に変換
             byte[] postDataBytes = System.Text.Encoding.ASCII.GetBytes(postData);
@@ -184,9 +224,9 @@ namespace 試験登録
                 //閉じる
                 sr.Close();
 
-                MessageBox.Show(resp);
-
                 // デシリアライズ(http://qiita.com/ta-yamaoka/items/a7ff1d9651310ade4e76)
+                AttendResponse respjson = JsonConvert.DeserializeObject<AttendResponse>(resp);
+                return respjson;
             }
             catch (WebException we)
             {
@@ -200,6 +240,8 @@ namespace 試験登録
             {
                 MessageBox.Show("エラー" + e.ToString());
             }
+
+            return null;
         }
 
         /** ボタンが押された*/
@@ -209,9 +251,12 @@ namespace 試験登録
             sUID = convZen2Han(textUID.Text);
 
             // 出席サーバーに登録
-            postAttend();
-
-            return;
+            attendResponse = postAttend(sUID);
+            if (attendResponse == null)
+            {
+                return;
+            }
+            remoteIP = attendResponse.serverIP;
 
             // 受信の開始
             if (client == null)
@@ -230,7 +275,12 @@ namespace 試験登録
             client.Send(send, send.Length, "255.255.255.255", SERVER_PORT);
 
             // メッセージ
-            MessageBox.Show(sUID + "：登録しました。");
+            string ent = sUID;
+            if (attendResponse.name.Length > 0)
+            {
+                ent += "(" + attendResponse.name + ")";
+            }
+            MessageBox.Show("出席を登録しました：" + ent);
 
             // フォームを最小化
             this.WindowState = FormWindowState.Minimized;
@@ -398,8 +448,28 @@ namespace 試験登録
         {
             if ((sUID.Length > 0) && (client != null))
             {
-                SendData.Send(remoteIP);
+                if (SendData.Send(remoteIP))
+                {
+                    // すぐにステータスを送信
+                    lLastSendTime = stopwatch.ElapsedMilliseconds-SEND_INTERVAL;
+                }
             }
+
+            SendStatus(sSaveFolder);
         }
+
     }
+
+    [JsonObject("user")]
+    public class AttendResponse
+    {
+        [JsonProperty("message")]
+        public string message { get; set; }
+        [JsonProperty("name")]
+        public string name { get; set; }
+        [JsonProperty("server_ip")]
+        public string serverIP { get; set; }
+    }
+
+
 }

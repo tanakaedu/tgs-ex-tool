@@ -17,6 +17,8 @@ namespace TgsExServer
         public static Form1 form1;
         const string VERSION = "Ver20160413";
 
+        private AttendForm attendForm = new AttendForm();
+
         // デバッグデータの利用
         const bool USE_DEBUG = false;
 
@@ -104,6 +106,12 @@ namespace TgsExServer
                 tableLayoutPanel1.Controls.Add(labels[row][i], i, row+1);
                 tableLayoutPanel1.Controls[(row+1)*((int)COL.MAX)+i].Anchor = anc[i];
             }
+
+            // 登録者数を変更
+            txtAttendCount.Text = "" + labels.Count;
+
+            // 更新
+            attendForm.setMember(labels);
         }
 
         /**
@@ -124,6 +132,9 @@ namespace TgsExServer
         /** 起動時処理*/
         private void Form1_Load(object sender, EventArgs e)
         {
+            txtFontSize.Text = ""+AttendForm.DEFAULT_FONT_SIZE;
+            attendForm.Show();
+
             // 設定読み込み
             string config = Path.GetDirectoryName(Application.ExecutablePath) + "\\config.dat";
             if (!File.Exists(config))
@@ -159,6 +170,9 @@ namespace TgsExServer
                 }
                 sortLabels();
             }
+
+            // 座席を設定
+            attendForm.changeZaseki(int.Parse(txtZaseki.Text));
         }
 
         /**
@@ -446,6 +460,43 @@ namespace TgsExServer
                 tcpServer.closeTcpListener();
                 tcpServer = null;
             }
+        }
+
+        /** フォントサイズのテキスト変更処理*/
+        private void txtFontSize_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                int w = int.Parse(txtFontSize.Text);
+                if (w <= 0)
+                {
+                    return;
+                }
+                // フォントサイズを変更
+                attendForm.changeTextSize(w);
+            }
+            catch (Exception ee)
+            {
+            }
+        }
+
+
+        private void textBox3_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                int w = int.Parse(txtZaseki.Text);
+                if (w <= 0)
+                {
+                    return;
+                }
+                // 先頭座席を変更
+                attendForm.changeZaseki(w);
+            }
+            catch (Exception ee)
+            {
+            }
+
         }
     }
 }

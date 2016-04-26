@@ -35,6 +35,12 @@
             this.button1 = new System.Windows.Forms.Button();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.textBox2 = new System.Windows.Forms.TextBox();
+            this.txtFontSize = new System.Windows.Forms.TextBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.txtAttendCount = new System.Windows.Forms.TextBox();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.txtZaseki = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -87,18 +93,81 @@
             this.textBox2.Size = new System.Drawing.Size(708, 92);
             this.textBox2.TabIndex = 3;
             // 
+            // txtFontSize
+            // 
+            this.txtFontSize.Location = new System.Drawing.Point(667, 72);
+            this.txtFontSize.Name = "txtFontSize";
+            this.txtFontSize.Size = new System.Drawing.Size(53, 19);
+            this.txtFontSize.TabIndex = 4;
+            this.txtFontSize.Text = "34";
+            this.txtFontSize.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.txtFontSize.TextChanged += new System.EventHandler(this.txtFontSize_TextChanged);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(594, 75);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(67, 12);
+            this.label1.TabIndex = 5;
+            this.label1.Text = "フォントサイズ";
+            // 
+            // txtAttendCount
+            // 
+            this.txtAttendCount.Location = new System.Drawing.Point(667, 47);
+            this.txtAttendCount.Name = "txtAttendCount";
+            this.txtAttendCount.ReadOnly = true;
+            this.txtAttendCount.Size = new System.Drawing.Size(53, 19);
+            this.txtAttendCount.TabIndex = 6;
+            this.txtAttendCount.Text = "0";
+            this.txtAttendCount.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(594, 54);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(29, 12);
+            this.label2.TabIndex = 7;
+            this.label2.Text = "人数";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(594, 104);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(63, 12);
+            this.label3.TabIndex = 8;
+            this.label3.Text = "先頭座席IP";
+            // 
+            // txtZaseki
+            // 
+            this.txtZaseki.Location = new System.Drawing.Point(667, 97);
+            this.txtZaseki.Name = "txtZaseki";
+            this.txtZaseki.Size = new System.Drawing.Size(53, 19);
+            this.txtZaseki.TabIndex = 9;
+            this.txtZaseki.Text = "101";
+            this.txtZaseki.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            this.txtZaseki.TextChanged += new System.EventHandler(this.textBox3_TextChanged);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(732, 562);
+            this.Controls.Add(this.txtZaseki);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.txtAttendCount);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.txtFontSize);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "試験サーバー";
+            this.Text = "出席サーバー(20160426.1)";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
@@ -115,6 +184,12 @@
         private System.Windows.Forms.Button button1;
         public System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.TextBox txtFontSize;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.TextBox txtAttendCount;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.TextBox txtZaseki;
 
 
     }

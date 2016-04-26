@@ -48,6 +48,8 @@ class CheckParameters
      */
     public function __invoke($request, $response, $next)
     {
+        file_put_contents(__DIR__.'/log.txt', "UID=".$_POST['uid']."/CARD=".$_POST['card']);
+
         // パラメータ不足チェック
         if (    !array_key_exists('uid', $_POST)
             ||  !array_key_exists('card', $_POST)) {

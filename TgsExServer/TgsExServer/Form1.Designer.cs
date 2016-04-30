@@ -41,6 +41,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.txtZaseki = new System.Windows.Forms.TextBox();
+            this.txtChanged = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -150,11 +151,21 @@
             this.txtZaseki.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             this.txtZaseki.TextChanged += new System.EventHandler(this.textBox3_TextChanged);
             // 
+            // txtChanged
+            // 
+            this.txtChanged.Location = new System.Drawing.Point(530, 131);
+            this.txtChanged.Multiline = true;
+            this.txtChanged.Name = "txtChanged";
+            this.txtChanged.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtChanged.Size = new System.Drawing.Size(190, 321);
+            this.txtChanged.TabIndex = 10;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(732, 562);
+            this.Controls.Add(this.txtChanged);
             this.Controls.Add(this.txtZaseki);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label2);
@@ -167,7 +178,7 @@
             this.Controls.Add(this.tableLayoutPanel1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "出席サーバー(20160426.1)";
+            this.Text = "出席サーバー(20160430.1)";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
@@ -190,6 +201,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox txtZaseki;
+        private System.Windows.Forms.TextBox txtChanged;
 
 
     }

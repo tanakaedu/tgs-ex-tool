@@ -15,7 +15,7 @@ namespace TgsExServer
     public partial class Form1 : Form
     {
         public static Form1 form1;
-        const string VERSION = "Ver20160413";
+        const string VERSION = "Ver20160430.1";
 
         private AttendForm attendForm = new AttendForm();
 
@@ -381,6 +381,15 @@ namespace TgsExServer
                     }
                     else
                     {
+                        // UIDの変更をチェック
+                        if (labels[idx][(int)COL.UID].Text != recvDatas[0][1])
+                        {
+                            // IP変更を記録
+                            string mes = labels[idx][(int)COL.UID].Text + ">" + recvDatas[0][1];
+                            txtChanged.AppendText(mes+"\r\n");
+                            File.AppendAllText(textBox1.Text+"\\changed.txt" ,mes+"\r\n");
+                        }
+
                         // 既存のメンバー
                         setLabelsText(idx, COL.IP, recvDatas[0][3]);    // IP
                         setLabelsText(idx, COL.UID, recvDatas[0][1]);
